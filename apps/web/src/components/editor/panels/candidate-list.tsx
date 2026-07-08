@@ -1,7 +1,9 @@
-import type { TimelineClip } from '../../../lib/editor/types'
+import type { CandidateClip, TimelineClip } from '../../../lib/editor/types'
+
+type DisplayClip = CandidateClip | TimelineClip
 
 type CandidateListProps = {
-  clips: TimelineClip[]
+  clips: DisplayClip[]
 }
 
 export function CandidateList({ clips }: CandidateListProps) {
@@ -20,14 +22,31 @@ export function CandidateList({ clips }: CandidateListProps) {
             </div>
             <div className="flex justify-between gap-3">
               <dt>Source</dt>
-              <dd>{formatRange(clip.source_range_sec)}</dd>
+              <dd>{formatRange(sourceRange(clip))}</dd>
             </div>
           </dl>
           <p className="mt-3 text-xs leading-5">{clip.reason}</p>
+          {captionPreview(clip) ? (
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">{captionPreview(clip)}</p>
+          ) : null}
         </article>
       ))}
     </div>
   )
+}
+
+function sourceRange(clip: DisplayClip): [number, number] {
+  if ('source_range_sec' in clip) {
+    return clip.source_range_sec
+  }
+  return [clip.start_sec, clip.end_sec]
+}
+
+function captionPreview(clip: DisplayClip): string | null {
+  if ('caption' in clip) {
+    return clip.caption
+  }
+  return null
 }
 
 function formatRange([start, end]: [number, number]) {

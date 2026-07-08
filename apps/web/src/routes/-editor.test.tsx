@@ -1,11 +1,15 @@
 // @vitest-environment jsdom
 
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { EditorPage } from '../components/editor/editor-page'
+import { EditorShell } from '../components/editor/editor-shell'
+import { mockTimelineSpec } from '../lib/editor/mock-timeline-spec'
 
 describe('EditorPage', () => {
+  afterEach(() => cleanup())
+
   it('renders the OpenCut AI Shorts editor shell', () => {
     render(<EditorPage />)
 
@@ -18,5 +22,43 @@ describe('EditorPage', () => {
     expect(screen.getByText('Score 87')).toBeTruthy()
     expect(screen.getByText('10.0s-28.0s')).toBeTruthy()
     expect(screen.getByText('実演と価格が同じ短い区間に入っている')).toBeTruthy()
+  })
+
+  it('displays analyzed candidates from the sidecar', async () => {
+    const analyze = vi.fn(async () => ({
+      session_id: '20260708-opencut-fixture',
+      provider: 'openai',
+      language: 'ja',
+      max_clip_sec: 30,
+      candidates: {
+        session_id: '20260708-opencut-fixture',
+        llm_model: 'gpt-4.1',
+        generated_at: '2026-07-08T11:00:00+09:00',
+        clips: [
+          {
+            clip_id: 'p02-c01',
+            product_id: 'p02',
+            start_sec: 32,
+            end_sec: 58,
+            segment_range: [4, 7],
+            score: 94,
+            reason: '価格、実演、使用感が連続している',
+            hook_text: 'この落ち方見て',
+            caption: 'ティントの落ちにくさを実演',
+            hashtags: ['コスメ'],
+          },
+        ],
+      },
+    }))
+    render(<EditorShell timelineSpec={mockTimelineSpec} sidecarClient={{ analyze }} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze' }))
+
+    await waitFor(() => expect(screen.getByText('p02-c01')).toBeTruthy())
+    expect(screen.getByText('p02')).toBeTruthy()
+    expect(screen.getByText('Score 94')).toBeTruthy()
+    expect(screen.getByText('32.0s-58.0s')).toBeTruthy()
+    expect(screen.getByText('価格、実演、使用感が連続している')).toBeTruthy()
+    expect(screen.getByText('ティントの落ちにくさを実演')).toBeTruthy()
   })
 })

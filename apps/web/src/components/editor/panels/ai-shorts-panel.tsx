@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 
-import type { TimelineClip } from '../../../lib/editor/types'
+import type { CandidateClip, TimelineClip } from '../../../lib/editor/types'
 import { createSidecarClient, type SidecarClient } from '../../../lib/editor/sidecar-client'
 import type { LanguageCode, SidecarProvider } from '../../../lib/editor/types'
 import { Button } from '../../ui/button'
@@ -21,6 +21,7 @@ export function AiShortsPanel({ sessionId, clips, client }: AiShortsPanelProps) 
   const [language, setLanguage] = useState<LanguageCode>('ja')
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [candidateCount, setCandidateCount] = useState(0)
+  const [analyzedClips, setAnalyzedClips] = useState<CandidateClip[] | null>(null)
   const [errorMessage, setErrorMessage] = useState('')
 
   async function analyze() {
@@ -33,6 +34,7 @@ export function AiShortsPanel({ sessionId, clips, client }: AiShortsPanelProps) 
         max_clip_sec: MAX_CLIP_SEC,
         force: true,
       })
+      setAnalyzedClips(result.candidates.clips)
       setCandidateCount(result.candidates.clips.length)
       setStatus('success')
     } catch (error) {
@@ -91,7 +93,7 @@ export function AiShortsPanel({ sessionId, clips, client }: AiShortsPanelProps) 
           {statusText}
         </p>
       </div>
-      <CandidateList clips={clips} />
+      <CandidateList clips={analyzedClips ?? clips} />
     </aside>
   )
 }
