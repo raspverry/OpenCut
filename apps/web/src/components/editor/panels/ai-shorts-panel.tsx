@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
 
+import type { AppliedTimeline } from '../../../lib/editor/apply-timeline-spec'
+import { applyTimelineSpec } from '../../../lib/editor/apply-timeline-spec'
 import type { CandidateClip, TimelineClip } from '../../../lib/editor/types'
 import { createSidecarClient, type SidecarClient } from '../../../lib/editor/sidecar-client'
 import type { LanguageCode, SidecarProvider } from '../../../lib/editor/types'
@@ -9,12 +11,13 @@ import { CandidateList } from './candidate-list'
 type AiShortsPanelProps = {
   sessionId: string
   clips: TimelineClip[]
-  client?: Pick<SidecarClient, 'analyze'>
+  client?: Pick<SidecarClient, 'analyze'> & Partial<Pick<SidecarClient, 'getTimelineSpec'>>
+  onApplyTimeline?: (timeline: AppliedTimeline) => void
 }
 
 const MAX_CLIP_SEC = 30
 
-export function AiShortsPanel({ sessionId, clips, client }: AiShortsPanelProps) {
+export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiShortsPanelProps) {
   const sidecarClient = useMemo(() => client ?? createSidecarClient(), [client])
   const [provider, setProvider] = useState<SidecarProvider>('anthropic')
   const [language, setLanguage] = useState<LanguageCode>('ja')
@@ -38,6 +41,27 @@ export function AiShortsPanel({ sessionId, clips, client }: AiShortsPanelProps) 
       setStatus('success')
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'analyze 실패')
+      setStatus('error')
+    }
+  }
+
+  async function applyClip(clipId: string) {
+    if (!sidecarClient.getTimelineSpec || !onApplyTimeline) {
+      setErrorMessage('timeline 적용 경로가 없습니다')
+      setStatus('error')
+      return
+    }
+    try {
+      const spec = await sidecarClient.getTimelineSpec(sessionId)
+      onApplyTimeline(
+        applyTimelineSpec({
+          ...spec,
+          clips: spec.clips.filter((clip) => clip.clip_id === clipId),
+        })
+      )
+      setStatus('success')
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'timeline 적용 실패')
       setStatus('error')
     }
   }
@@ -99,7 +123,10 @@ export function AiShortsPanel({ sessionId, clips, client }: AiShortsPanelProps) 
           {statusText}
         </p>
       </div>
-      <CandidateList clips={analyzedClips ?? clips} />
+      <CandidateList
+        clips={analyzedClips ?? clips}
+        onApplyClip={sidecarClient.getTimelineSpec && onApplyTimeline ? applyClip : undefined}
+      />
     </aside>
   )
 }

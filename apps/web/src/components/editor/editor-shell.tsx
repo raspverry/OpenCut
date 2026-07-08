@@ -1,3 +1,6 @@
+import { useState } from 'react'
+
+import type { AppliedTimeline } from '../../lib/editor/apply-timeline-spec'
 import type { TimelineSpec } from '../../lib/editor/types'
 import type { SidecarClient } from '../../lib/editor/sidecar-client'
 import { AiShortsPanel } from './panels/ai-shorts-panel'
@@ -11,6 +14,8 @@ type EditorShellProps = {
 }
 
 export function EditorShell({ timelineSpec, sidecarClient }: EditorShellProps) {
+  const [appliedTimeline, setAppliedTimeline] = useState<AppliedTimeline | null>(null)
+
   return (
     <main className="min-h-screen bg-background text-foreground">
       <section aria-label="OpenCut AI Shorts editor" className="flex min-h-screen flex-col">
@@ -24,8 +29,9 @@ export function EditorShell({ timelineSpec, sidecarClient }: EditorShellProps) {
             sessionId={timelineSpec.session_id}
             clips={timelineSpec.clips}
             client={sidecarClient}
+            onApplyTimeline={setAppliedTimeline}
           />
-          <TimelinePlaceholder clips={timelineSpec.clips} />
+          <TimelinePlaceholder clips={timelineSpec.clips} appliedTimeline={appliedTimeline} />
         </div>
       </section>
     </main>

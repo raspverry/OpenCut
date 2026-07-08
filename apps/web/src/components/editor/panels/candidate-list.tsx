@@ -4,9 +4,10 @@ type DisplayClip = CandidateClip | TimelineClip
 
 type CandidateListProps = {
   clips: DisplayClip[]
+  onApplyClip?: (clipId: string) => void
 }
 
-export function CandidateList({ clips }: CandidateListProps) {
+export function CandidateList({ clips, onApplyClip }: CandidateListProps) {
   return (
     <div className="mt-4 space-y-3">
       {clips.map((clip) => (
@@ -28,6 +29,16 @@ export function CandidateList({ clips }: CandidateListProps) {
           <p className="mt-3 text-xs leading-5">{clip.reason}</p>
           {captionPreview(clip) ? (
             <p className="mt-2 text-xs leading-5 text-muted-foreground">{captionPreview(clip)}</p>
+          ) : null}
+          {onApplyClip ? (
+            <button
+              type="button"
+              aria-label={`Apply ${clip.clip_id}`}
+              onClick={() => onApplyClip(clip.clip_id)}
+              className="mt-3 inline-flex h-6 items-center rounded-md border px-2 text-xs hover:bg-muted"
+            >
+              Apply
+            </button>
           ) : null}
         </article>
       ))}
