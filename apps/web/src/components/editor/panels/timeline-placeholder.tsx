@@ -11,10 +11,12 @@ export function TimelinePlaceholder({ clips, appliedTimeline }: TimelinePlacehol
     ? appliedTimeline.elements.map((element) => ({
         id: element.id,
         label: element.type,
+        preview: 'text' in element ? element.text : '',
       }))
     : clips.map((clip) => ({
         id: clip.clip_id,
         label: 'clip',
+        preview: '',
       }))
 
   return (
@@ -25,7 +27,15 @@ export function TimelinePlaceholder({ clips, appliedTimeline }: TimelinePlacehol
           <div className="grid grid-cols-[160px_minmax(0,1fr)] items-center gap-3 text-xs" key={row.id}>
             <span className="truncate font-medium">{row.id}</span>
             <span className="sr-only">{row.label}</span>
-            <div className={`h-8 rounded-sm border shadow-inner shadow-black/5 ${trackClass(row.label)}`} />
+            <div
+              className={`flex h-8 min-w-0 items-center rounded-sm border px-2 shadow-inner shadow-black/5 ${trackClass(row.label)}`}
+            >
+              {row.preview ? (
+                <span className="truncate text-[0.6875rem] font-medium text-foreground/70">
+                  {row.preview}
+                </span>
+              ) : null}
+            </div>
           </div>
         ))}
       </div>

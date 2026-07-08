@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 
 import type { AppliedTimeline } from '../../../lib/editor/apply-timeline-spec'
 import { applyTimelineSpec } from '../../../lib/editor/apply-timeline-spec'
-import type { CandidateClip, TimelineClip } from '../../../lib/editor/types'
+import type { CandidateClip, CaptionCueFile, TimelineClip } from '../../../lib/editor/types'
 import { createSidecarClient, type SidecarClient } from '../../../lib/editor/sidecar-client'
 import type { LanguageCode, SidecarProvider, SourceLanguageCode } from '../../../lib/editor/types'
 import { NativeSelect, NativeSelectOption } from '../../ui/native-select'
@@ -93,17 +93,14 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
     }
     try {
       const spec = await sidecarClient.getTimelineSpec(sessionId)
-      onApplyTimeline(
-        applyTimelineSpec({
-          ...spec,
-          clips: spec.clips
-            .filter((clip) => clip.clip_id === clipId)
-            .map((clip) => ({
-              ...clip,
-              timeline_start_sec: 0,
-            })),
-        })
-      )
+      const clipsToApply = spec.clips
+        .filter((clip) => clip.clip_id === clipId)
+        .map((clip) => ({
+          ...clip,
+          timeline_start_sec: 0,
+        }))
+      const captionCuesByClip = await loadCaptionCuesByClip(clipsToApply)
+      onApplyTimeline(applyTimelineSpec({ ...spec, clips: clipsToApply }, { captionCuesByClip }))
       setCandidateCount(1)
       setSuccessMessage('Applied 1 clip to timeline')
       setStatus('success')
@@ -121,7 +118,8 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
     }
     try {
       const spec = await sidecarClient.getTimelineSpec(sessionId)
-      onApplyTimeline(applyTimelineSpec(spec))
+      const captionCuesByClip = await loadCaptionCuesByClip(spec.clips)
+      onApplyTimeline(applyTimelineSpec(spec, { captionCuesByClip }))
       setCandidateCount(spec.clips.length)
       setSuccessMessage(
         `Applied ${spec.clips.length} clip${spec.clips.length === 1 ? '' : 's'} to timeline`
@@ -131,6 +129,23 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
       setErrorMessage(error instanceof Error ? error.message : 'timeline 적용 실패')
       setStatus('error')
     }
+  }
+
+  async function loadCaptionCuesByClip(
+    clipsToApply: TimelineClip[]
+  ): Promise<Record<string, CaptionCueFile | undefined>> {
+    const getCaptionCues = sidecarClient.getCaptionCues
+    if (!getCaptionCues) {
+      return {}
+    }
+    return Object.fromEntries(
+      await Promise.all(
+        clipsToApply.map(async (clip) => [
+          clip.clip_id,
+          await getCaptionCues(sessionId, clip.clip_id),
+        ])
+      )
+    )
   }
 
   const displayClips = analyzedClips ?? clips

@@ -1,4 +1,4 @@
-import type { TimelineSpec } from './types'
+import type { CaptionCueFile, TimelineClip, TimelineSpec } from './types'
 
 const CTA_TEXT = 'TikTok Shopでチェック'
 const OVERLAY_DURATION_SEC = 3
@@ -15,6 +15,11 @@ export type TimelineElement =
   | HookTextElement
   | CtaTextElement
   | CaptionTrackElement
+  | CaptionTextElement
+
+type ApplyTimelineSpecOptions = {
+  captionCuesByClip?: Record<string, CaptionCueFile | undefined>
+}
 
 type MediaElement = {
   clipId: string
@@ -63,7 +68,30 @@ type CaptionTrackElement = {
   captionStyle: string
 }
 
-export function applyTimelineSpec(spec: TimelineSpec): AppliedTimeline {
+type CaptionTextElement = {
+  id: string
+  type: 'caption_text'
+  clipId: string
+  timelineStartSec: number
+  durationSec: number
+  sourceStartSec: number
+  sourceEndSec: number
+  text: string
+  captionStyle: string
+  wordTimings: CaptionWordTiming[]
+}
+
+type CaptionWordTiming = {
+  text: string
+  startSec: number
+  endSec: number
+  confidence: number | null
+}
+
+export function applyTimelineSpec(
+  spec: TimelineSpec,
+  options: ApplyTimelineSpecOptions = {}
+): AppliedTimeline {
   return {
     sessionId: spec.session_id,
     fingerprint: spec.fingerprint,
@@ -72,7 +100,7 @@ export function applyTimelineSpec(spec: TimelineSpec): AppliedTimeline {
       const durationSec = sourceEndSec - sourceStartSec
       const overlayDurationSec = Math.min(OVERLAY_DURATION_SEC, durationSec)
       const timelineStartSec = clip.timeline_start_sec
-      return [
+      const coreElements: TimelineElement[] = [
         {
           id: `${clip.clip_id}-video`,
           type: 'video' as const,
@@ -119,6 +147,48 @@ export function applyTimelineSpec(spec: TimelineSpec): AppliedTimeline {
           captionStyle: clip.caption_style,
         },
       ]
+      return [
+        ...coreElements,
+        ...buildCaptionTextElements({
+          clip,
+          sourceStartSec,
+          timelineStartSec,
+          captionFile: options.captionCuesByClip?.[clip.clip_id],
+        }),
+      ]
     }),
   }
+}
+
+function buildCaptionTextElements({
+  clip,
+  sourceStartSec,
+  timelineStartSec,
+  captionFile,
+}: {
+  clip: TimelineClip
+  sourceStartSec: number
+  timelineStartSec: number
+  captionFile?: CaptionCueFile
+}): CaptionTextElement[] {
+  if (!captionFile) {
+    return []
+  }
+  return captionFile.cues.map((cue) => ({
+    id: `${clip.clip_id}-caption-${cue.cue_id}`,
+    type: 'caption_text' as const,
+    clipId: clip.clip_id,
+    timelineStartSec: timelineStartSec + Math.max(cue.start_sec - sourceStartSec, 0),
+    durationSec: Math.max(cue.end_sec - cue.start_sec, 0),
+    sourceStartSec: cue.start_sec,
+    sourceEndSec: cue.end_sec,
+    text: cue.text,
+    captionStyle: clip.caption_style,
+    wordTimings: cue.words.map((word) => ({
+      text: word.w,
+      startSec: word.start,
+      endSec: word.end,
+      confidence: word.confidence,
+    })),
+  }))
 }

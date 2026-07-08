@@ -99,11 +99,12 @@ describe('AiShortsPanel', () => {
         },
       ],
     }))
+    const getCaptionCues = vi.fn(async () => captionCueFile('p01-c01'))
     render(
       <AiShortsPanel
         sessionId="20260708-sale"
         clips={[mockTimelineSpec.clips[0]]}
-        client={{ getTimelineSpec }}
+        client={{ getTimelineSpec, getCaptionCues }}
         onApplyTimeline={onApplyTimeline}
       />
     )
@@ -114,6 +115,15 @@ describe('AiShortsPanel', () => {
     expect(onApplyTimeline).toHaveBeenCalled()
     const timeline = onApplyTimeline.mock.calls[0]?.[0]
     expect(timeline.elements.find((element) => element.type === 'video')?.timelineStartSec).toBe(0)
+    expect(timeline.elements).toContainEqual(
+      expect.objectContaining({
+        id: 'p01-c01-caption-p01-c01-q001',
+        type: 'caption_text',
+        text: 'このツヤ見て',
+        wordTimings: [{ text: 'この', startSec: 10, endSec: 10.4, confidence: 0.93 }],
+      })
+    )
+    expect(getCaptionCues).toHaveBeenCalledWith('20260708-sale', 'p01-c01')
   })
 
   it('server renders without falling back to client rendering', () => {
@@ -152,6 +162,32 @@ function analyzeResponse(count: number): AnalyzeResponse {
         caption: '新作セラムをチェック',
         hashtags: ['コスメ'],
       })),
+    },
+  }
+}
+
+function captionCueFile(clipId: string) {
+  return {
+    clip_id: clipId,
+    language: 'ja',
+    preset: 'ja-shorts-safe-v1',
+    source_range_sec: [10, 28],
+    cues: [
+      {
+        cue_id: `${clipId}-q001`,
+        source_segment_id: 0,
+        start_sec: 10,
+        end_sec: 12,
+        text: 'このツヤ見て',
+        words: [{ w: 'この', start: 10, end: 10.4, confidence: 0.93 }],
+      },
+    ],
+    style: {
+      format: 'word_pop',
+      font_family: 'Noto Sans CJK JP',
+      max_chars_per_line: 13,
+      max_lines: 2,
+      safe_area: { anchor: 'bottom', margin_px: 640 },
     },
   }
 }
