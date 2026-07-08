@@ -15,7 +15,8 @@ describe('AiShortsPanel', () => {
     render(<AiShortsPanel sessionId="20260708-sale" clips={[]} client={idleClient()} />)
 
     expect((screen.getByLabelText('Provider') as HTMLSelectElement).value).toBe('anthropic')
-    expect((screen.getByLabelText('Language') as HTMLSelectElement).value).toBe('ja')
+    expect((screen.getByLabelText('Source Language') as HTMLSelectElement).value).toBe('ja')
+    expect((screen.getByLabelText('Caption Language') as HTMLSelectElement).value).toBe('ja')
     expect(screen.getByText('Max 30s')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Analyze' })).toBeTruthy()
   })
@@ -31,12 +32,14 @@ describe('AiShortsPanel', () => {
     )
 
     fireEvent.change(screen.getByLabelText('Provider'), { target: { value: 'openai' } })
+    fireEvent.change(screen.getByLabelText('Source Language'), { target: { value: 'zh' } })
     fireEvent.click(screen.getByRole('button', { name: 'Analyze' }))
 
     expect(screen.getByText('Analyzing...')).toBeTruthy()
     await waitFor(() => expect(screen.getByText('1 candidate ready')).toBeTruthy())
     expect(analyze).toHaveBeenCalledWith('20260708-sale', {
       provider: 'openai',
+      source_language: 'zh',
       language: 'ja',
       max_clip_sec: 30,
       force: true,
@@ -99,6 +102,7 @@ function analyzeResponse(count: number): AnalyzeResponse {
   return {
     session_id: '20260708-sale',
     provider: 'openai',
+    source_language: 'zh',
     language: 'ja',
     max_clip_sec: 30,
     candidates: {

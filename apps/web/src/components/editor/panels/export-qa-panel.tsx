@@ -9,7 +9,10 @@ type ExportQaPanelProps = {
   sessionId: string
   timeline: AppliedTimeline | null
   client?: Partial<
-    Pick<SidecarClient, 'draftOpenCutExportManifest' | 'verifyOpenCutExportManifest'>
+    Pick<
+      SidecarClient,
+      'draftOpenCutExportManifest' | 'uploadOpenCutExportArtifact' | 'verifyOpenCutExportManifest'
+    >
   >
 }
 
@@ -31,7 +34,8 @@ export function ExportQaPanel({ sessionId, timeline, client }: ExportQaPanelProp
   const [statusKind, setStatusKind] = useState<'info' | 'error'>('info')
   const [isRunning, setIsRunning] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const isBusy = isRunning || isRefreshing
+  const [isUploading, setIsUploading] = useState(false)
+  const isBusy = isRunning || isRefreshing || isUploading
 
   useEffect(() => {
     setOutputs((current) =>
@@ -149,6 +153,35 @@ export function ExportQaPanel({ sessionId, timeline, client }: ExportQaPanelProp
     }
   }
 
+  async function uploadExport(clipId: string, file: File | undefined) {
+    if (!file) {
+      return
+    }
+    if (!client?.uploadOpenCutExportArtifact) {
+      setStatus('sidecar export artifact 업로드 경로가 없습니다')
+      setStatusKind('error')
+      return
+    }
+    setIsUploading(true)
+    setStatus(`Uploading ${clipId}...`)
+    setStatusKind('info')
+    try {
+      const artifact = await client.uploadOpenCutExportArtifact(
+        sessionId,
+        clipId,
+        await file.arrayBuffer()
+      )
+      updateOutput(clipId, 'videoFile', artifact.video_file)
+      setStatus(`Uploaded ${clipId}: ${artifact.byte_size} bytes`)
+      setStatusKind('info')
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'OpenCut export artifact 업로드 실패')
+      setStatusKind('error')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
   return (
     <section
       aria-busy={isBusy}
@@ -203,6 +236,20 @@ export function ExportQaPanel({ sessionId, timeline, client }: ExportQaPanelProp
               <p className="mt-2 text-[0.6875rem] leading-4 text-muted-foreground">
                 Loudness and subtitle contact sheet are measured after submit.
               </p>
+              <label className="mt-3 block space-y-1.5 text-xs text-muted-foreground">
+                <span>Upload MP4</span>
+                <input
+                  aria-label={`Upload exported MP4 for ${clipId}`}
+                  accept="video/mp4,.mp4"
+                  className="block w-full text-xs text-muted-foreground file:mr-2 file:h-7 file:rounded-md file:border-0 file:bg-background file:px-2.5 file:text-xs file:font-medium file:text-foreground hover:file:bg-muted disabled:pointer-events-none disabled:opacity-55"
+                  disabled={isBusy}
+                  type="file"
+                  onChange={(event) => {
+                    void uploadExport(clipId, event.currentTarget.files?.[0])
+                    event.currentTarget.value = ''
+                  }}
+                />
+              </label>
             </div>
           )
         })}

@@ -129,4 +129,43 @@ describe('ExportQaPanel', () => {
       )
     )
   })
+
+  it('uploads exported MP4 files into the sidecar final folder', async () => {
+    const timeline = applyTimelineSpec(mockTimelineSpec)
+    const uploadOpenCutExportArtifact = vi.fn(async () => ({
+      session_id: '20260708-opencut-fixture',
+      clip_id: 'p01-c01',
+      video_file: 'final/p01-c01.mp4',
+      byte_size: 3,
+    }))
+
+    render(
+      <ExportQaPanel
+        sessionId="20260708-opencut-fixture"
+        timeline={timeline}
+        client={{
+          uploadOpenCutExportArtifact,
+          draftOpenCutExportManifest: vi.fn(),
+          verifyOpenCutExportManifest: vi.fn(),
+        }}
+      />
+    )
+
+    const file = new File([new Uint8Array([1, 2, 3])], 'p01-c01.mp4', {
+      type: 'video/mp4',
+    })
+    fireEvent.change(screen.getByLabelText('Upload exported MP4 for p01-c01'), {
+      target: { files: [file] },
+    })
+
+    await waitFor(() => expect(uploadOpenCutExportArtifact).toHaveBeenCalled())
+    const uploadCall = uploadOpenCutExportArtifact.mock.calls[0]
+    expect(uploadCall?.[0]).toBe('20260708-opencut-fixture')
+    expect(uploadCall?.[1]).toBe('p01-c01')
+    expect(Array.from(new Uint8Array(uploadCall?.[2]))).toEqual([1, 2, 3])
+    expect(
+      (screen.getByLabelText('Exported video file for p01-c01') as HTMLInputElement).value
+    ).toBe('final/p01-c01.mp4')
+    expect(screen.getByRole('status').textContent).toBe('Uploaded p01-c01: 3 bytes')
+  })
 })

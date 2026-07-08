@@ -1,5 +1,7 @@
 export type LanguageCode = 'ja' | 'ko'
 
+export type SourceLanguageCode = 'ja' | 'ko' | 'zh'
+
 export type SidecarProvider = 'anthropic' | 'openai'
 
 export type SessionResponse = {
@@ -40,6 +42,7 @@ export type Candidates = {
 export type AnalyzeResponse = {
   session_id: string
   provider: SidecarProvider
+  source_language: SourceLanguageCode
   language: LanguageCode
   max_clip_sec: number
   candidates: Candidates
@@ -108,6 +111,13 @@ export type OpenCutExportManifestDraftRequest = {
 export type OpenCutExportManifestDraft = {
   manifest: OpenCutExportManifest
   missing_files: string[]
+}
+
+export type OpenCutExportArtifact = {
+  session_id: string
+  clip_id: string
+  video_file: string
+  byte_size: number
 }
 
 export type OpenCutExportQaResponse = {

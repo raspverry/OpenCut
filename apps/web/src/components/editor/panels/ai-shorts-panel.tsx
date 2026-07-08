@@ -4,7 +4,7 @@ import type { AppliedTimeline } from '../../../lib/editor/apply-timeline-spec'
 import { applyTimelineSpec } from '../../../lib/editor/apply-timeline-spec'
 import type { CandidateClip, TimelineClip } from '../../../lib/editor/types'
 import { createSidecarClient, type SidecarClient } from '../../../lib/editor/sidecar-client'
-import type { LanguageCode, SidecarProvider } from '../../../lib/editor/types'
+import type { LanguageCode, SidecarProvider, SourceLanguageCode } from '../../../lib/editor/types'
 import { NativeSelect, NativeSelectOption } from '../../ui/native-select'
 import { CandidateList } from './candidate-list'
 
@@ -20,6 +20,7 @@ const MAX_CLIP_SEC = 30
 export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiShortsPanelProps) {
   const sidecarClient = useMemo(() => client ?? createSidecarClient(), [client])
   const [provider, setProvider] = useState<SidecarProvider>('anthropic')
+  const [sourceLanguage, setSourceLanguage] = useState<SourceLanguageCode>('ja')
   const [language, setLanguage] = useState<LanguageCode>('ja')
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [candidateCount, setCandidateCount] = useState(0)
@@ -39,6 +40,7 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
     try {
       const result = await sidecarClient.analyze(sessionId, {
         provider,
+        source_language: sourceLanguage,
         language,
         max_clip_sec: MAX_CLIP_SEC,
         force: true,
@@ -119,7 +121,7 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
           Max 30s
         </span>
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-2">
+      <div className="mt-4 grid grid-cols-3 gap-2">
         <label className="space-y-1 text-xs text-muted-foreground">
           <span>Provider</span>
           <NativeSelect
@@ -133,9 +135,24 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
           </NativeSelect>
         </label>
         <label className="space-y-1 text-xs text-muted-foreground">
-          <span>Language</span>
+          <span>Source</span>
           <NativeSelect
-            aria-label="Language"
+            aria-label="Source Language"
+            value={sourceLanguage}
+            onChange={(event) =>
+              setSourceLanguage(event.currentTarget.value as SourceLanguageCode)
+            }
+            className="w-full"
+          >
+            <NativeSelectOption value="ja">Japanese</NativeSelectOption>
+            <NativeSelectOption value="ko">Korean</NativeSelectOption>
+            <NativeSelectOption value="zh">Chinese</NativeSelectOption>
+          </NativeSelect>
+        </label>
+        <label className="space-y-1 text-xs text-muted-foreground">
+          <span>Captions</span>
+          <NativeSelect
+            aria-label="Caption Language"
             value={language}
             onChange={(event) => setLanguage(event.currentTarget.value as LanguageCode)}
             className="w-full"

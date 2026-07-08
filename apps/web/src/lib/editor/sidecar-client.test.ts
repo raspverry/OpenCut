@@ -26,6 +26,7 @@ describe('createSidecarClient', () => {
       return jsonResponse({
         session_id: '20260708-sale',
         provider: 'openai',
+        source_language: 'zh',
         language: 'ja',
         max_clip_sec: 30,
         candidates: {
@@ -53,6 +54,7 @@ describe('createSidecarClient', () => {
 
     const response = await client.analyze('20260708-sale', {
       provider: 'openai',
+      source_language: 'zh',
       language: 'ja',
       max_clip_sec: 30,
       max_clips: 3,
@@ -64,6 +66,7 @@ describe('createSidecarClient', () => {
     expect(calls[0][1]?.body).toBe(
       JSON.stringify({
         provider: 'openai',
+        source_language: 'zh',
         language: 'ja',
         max_clip_sec: 30,
         max_clips: 3,
@@ -204,6 +207,36 @@ describe('createSidecarClient', () => {
     )
     expect(calls[0][1]?.method).toBe('POST')
     expect(calls[0][1]?.body).toBe(JSON.stringify(request))
+  })
+
+  it('uploads OpenCut export artifacts as browser buffers', async () => {
+    const calls: Array<[string, RequestInit | undefined]> = []
+    const artifact = {
+      session_id: '20260708-sale',
+      clip_id: 'p01-c01',
+      video_file: 'final/p01-c01.mp4',
+      byte_size: 3,
+    }
+    const fetcher = async (input: string | URL | Request, init?: RequestInit) => {
+      calls.push([String(input), init])
+      return jsonResponse(artifact, 201)
+    }
+    const client = createSidecarClient({ fetcher })
+    const buffer = new Uint8Array([1, 2, 3]).buffer
+
+    const response = await client.uploadOpenCutExportArtifact(
+      '20260708-sale',
+      'p01-c01',
+      buffer
+    )
+
+    expect(response).toEqual(artifact)
+    expect(calls[0][0]).toBe(
+      'http://127.0.0.1:8789/api/sessions/20260708-sale/qa/opencut-export/artifacts/p01-c01'
+    )
+    expect(calls[0][1]?.method).toBe('POST')
+    expect(calls[0][1]?.headers).toEqual({ 'content-type': 'video/mp4' })
+    expect(calls[0][1]?.body).toBe(buffer)
   })
 
   it('throws Korean sidecar error detail when the API fails', async () => {

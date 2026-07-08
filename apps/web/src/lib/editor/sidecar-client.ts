@@ -3,6 +3,7 @@ import type {
   Candidates,
   IngestResponse,
   LanguageCode,
+  OpenCutExportArtifact,
   OpenCutExportManifest,
   OpenCutExportManifestDraft,
   OpenCutExportManifestDraftRequest,
@@ -10,6 +11,7 @@ import type {
   OpenCutExportReport,
   SessionResponse,
   SidecarProvider,
+  SourceLanguageCode,
   TimelineSpec,
 } from './types'
 
@@ -30,6 +32,7 @@ export type IngestRequest = {
 
 export type AnalyzeRequest = {
   provider?: SidecarProvider
+  source_language?: SourceLanguageCode
   language?: LanguageCode
   max_clip_sec?: number
   max_clips?: number
@@ -122,6 +125,17 @@ export function createSidecarClient(options: { baseUrl?: string; fetcher?: Fetch
         {
           method: 'POST',
           body: JSON.stringify(payload),
+        }
+      )
+    },
+    uploadOpenCutExportArtifact(sessionId: string, clipId: string, buffer: ArrayBuffer) {
+      return requestJson<OpenCutExportArtifact>(
+        fetcher,
+        `${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/qa/opencut-export/artifacts/${encodeURIComponent(clipId)}`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'video/mp4' },
+          body: buffer,
         }
       )
     },
