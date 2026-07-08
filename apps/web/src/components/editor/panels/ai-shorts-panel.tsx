@@ -23,6 +23,7 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
   const [language, setLanguage] = useState<LanguageCode>('ja')
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [candidateCount, setCandidateCount] = useState(0)
+  const [successMessage, setSuccessMessage] = useState('')
   const [analyzedClips, setAnalyzedClips] = useState<CandidateClip[] | null>(null)
   const [errorMessage, setErrorMessage] = useState('')
 
@@ -33,6 +34,7 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
       return
     }
     setStatus('loading')
+    setSuccessMessage('')
     setErrorMessage('')
     try {
       const result = await sidecarClient.analyze(sessionId, {
@@ -43,6 +45,11 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
       })
       setAnalyzedClips(result.candidates.clips)
       setCandidateCount(result.candidates.clips.length)
+      setSuccessMessage(
+        `${result.candidates.clips.length} candidate${
+          result.candidates.clips.length === 1 ? '' : 's'
+        } ready`
+      )
       setStatus('success')
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'analyze 실패')
@@ -65,6 +72,7 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
         })
       )
       setCandidateCount(1)
+      setSuccessMessage('Applied 1 clip to timeline')
       setStatus('success')
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'timeline 적용 실패')
@@ -82,6 +90,9 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
       const spec = await sidecarClient.getTimelineSpec(sessionId)
       onApplyTimeline(applyTimelineSpec(spec))
       setCandidateCount(spec.clips.length)
+      setSuccessMessage(
+        `Applied ${spec.clips.length} clip${spec.clips.length === 1 ? '' : 's'} to timeline`
+      )
       setStatus('success')
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'timeline 적용 실패')
@@ -95,16 +106,18 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
     status === 'loading'
       ? 'Analyzing...'
       : status === 'success'
-        ? `${candidateCount} candidate${candidateCount === 1 ? '' : 's'} ready`
+        ? successMessage || `${candidateCount} candidate${candidateCount === 1 ? '' : 's'} ready`
         : status === 'error'
           ? errorMessage
           : 'Ready'
 
   return (
-    <aside className="bg-background p-4">
+    <aside className="min-h-0 overflow-auto bg-card p-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-sm font-medium">AI Shorts</h2>
-        <span className="text-xs text-muted-foreground">Max 30s</span>
+        <h2 className="text-sm font-semibold tracking-tight">AI Shorts</h2>
+        <span className="rounded-md border bg-muted/35 px-2 py-1 text-[0.6875rem] font-medium text-muted-foreground">
+          Max 30s
+        </span>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2">
         <label className="space-y-1 text-xs text-muted-foreground">
@@ -137,7 +150,7 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
           type="button"
           onClick={analyze}
           disabled={status === 'loading'}
-          className="inline-flex h-7 shrink-0 items-center justify-center rounded-md bg-primary px-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/80 disabled:pointer-events-none disabled:opacity-50"
+          className="inline-flex h-8 shrink-0 items-center justify-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground shadow-sm shadow-black/10 transition-colors hover:bg-primary/85 disabled:pointer-events-none disabled:opacity-50"
         >
           Analyze
         </button>
@@ -145,7 +158,7 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
           <button
             type="button"
             onClick={applyAllClips}
-            className="inline-flex h-7 shrink-0 items-center justify-center rounded-md border px-2 text-xs hover:bg-muted"
+            className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-background px-2.5 text-xs font-medium shadow-sm shadow-black/5 transition-colors hover:bg-muted"
           >
             Apply All
           </button>

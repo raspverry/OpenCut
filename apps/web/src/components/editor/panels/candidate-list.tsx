@@ -8,22 +8,35 @@ type CandidateListProps = {
 }
 
 export function CandidateList({ clips, onApplyClip }: CandidateListProps) {
+  if (clips.length === 0) {
+    return (
+      <div className="mt-4 rounded-md border border-dashed bg-muted/20 px-3 py-4 text-xs text-muted-foreground">
+        Run Analyze to generate candidates
+      </div>
+    )
+  }
+
   return (
     <div className="mt-4 space-y-3">
       {clips.map((clip) => (
-        <article className="rounded-md border p-3" key={clip.clip_id}>
+        <article
+          className="rounded-md border bg-background p-3 shadow-sm shadow-black/5 transition-colors hover:bg-muted/20"
+          key={clip.clip_id}
+        >
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold">{clip.clip_id}</h3>
-            <span className="text-xs">Score {clip.score}</span>
+            <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[0.6875rem] font-medium">
+              Score {clip.score}
+            </span>
           </div>
-          <dl className="mt-2 space-y-1 text-xs">
+          <dl className="mt-3 space-y-1 text-xs">
             <div className="flex justify-between gap-3">
-              <dt>Product</dt>
-              <dd>{clip.product_id ?? 'general'}</dd>
+              <dt className="text-muted-foreground">Product</dt>
+              <dd className="font-medium">{clip.product_id ?? 'general'}</dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt>Source</dt>
-              <dd>{formatRange(sourceRange(clip))}</dd>
+              <dt className="text-muted-foreground">Source</dt>
+              <dd className="font-medium">{formatRange(sourceRange(clip))}</dd>
             </div>
           </dl>
           <p className="mt-3 text-xs leading-5">{clip.reason}</p>
@@ -35,7 +48,7 @@ export function CandidateList({ clips, onApplyClip }: CandidateListProps) {
               type="button"
               aria-label={`Apply ${clip.clip_id}`}
               onClick={() => onApplyClip(clip.clip_id)}
-              className="mt-3 inline-flex h-6 items-center rounded-md border px-2 text-xs hover:bg-muted"
+              className="mt-3 inline-flex h-7 items-center rounded-md border bg-background px-2.5 text-xs font-medium shadow-sm shadow-black/5 transition-colors hover:bg-muted"
             >
               Apply
             </button>

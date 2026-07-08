@@ -54,14 +54,14 @@ export function SourceMediaPanel({
   }
 
   return (
-    <aside className="bg-background p-4">
-      <h2 className="text-sm font-medium">Source Media</h2>
+    <aside className="bg-card p-4">
+      <h2 className="text-sm font-semibold tracking-tight">Source Media</h2>
       <div className="mt-4 space-y-3">
         <label className="block space-y-1 text-xs text-muted-foreground">
           <span>Session slug</span>
           <input
             aria-label="Session slug"
-            className="h-7 w-full rounded-md border bg-background px-2 text-xs text-foreground"
+            className="h-8 w-full rounded-md border bg-background px-2.5 text-xs text-foreground shadow-inner shadow-black/5 outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/25"
             value={slug}
             onChange={(event) => setSlug(event.currentTarget.value)}
           />
@@ -70,7 +70,7 @@ export function SourceMediaPanel({
           <span>Source path</span>
           <input
             aria-label="Source path"
-            className="h-7 w-full rounded-md border bg-background px-2 text-xs text-foreground"
+            className="h-8 w-full rounded-md border bg-background px-2.5 text-xs text-foreground shadow-inner shadow-black/5 outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/25"
             value={sourcePath}
             onChange={(event) => setSourcePath(event.currentTarget.value)}
           />
@@ -78,22 +78,24 @@ export function SourceMediaPanel({
         <div className="flex gap-2">
           <button
             type="button"
-            className="inline-flex h-7 items-center rounded-md border px-2 text-xs hover:bg-muted"
+            className="inline-flex h-8 items-center rounded-md border bg-background px-2.5 text-xs font-medium shadow-sm shadow-black/5 transition-colors hover:bg-muted"
             onClick={createSession}
           >
             Create Session
           </button>
           <button
             type="button"
-            className="inline-flex h-7 items-center rounded-md border px-2 text-xs hover:bg-muted"
+            className="inline-flex h-8 items-center rounded-md border bg-background px-2.5 text-xs font-medium shadow-sm shadow-black/5 transition-colors hover:bg-muted"
             onClick={ingestSource}
           >
             Ingest
           </button>
         </div>
       </div>
-      <p className="mt-3 break-all text-xs text-muted-foreground">{sourceFile}</p>
-      <p role="status" className="mt-2 break-all text-xs">
+      <p className="mt-3 break-all rounded-md bg-muted/35 px-2 py-1.5 text-xs text-muted-foreground">
+        {sourceFile}
+      </p>
+      <p role="status" className="mt-2 break-all rounded-md border bg-background px-2 py-1.5 text-xs">
         {status}
       </p>
     </aside>

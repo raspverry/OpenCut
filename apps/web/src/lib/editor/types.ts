@@ -89,6 +89,18 @@ export type OpenCutExportReportClip = {
   errors: string[]
 }
 
+export type OpenCutExportManifest = {
+  session_id: string
+  exported_at: string
+  fingerprint: string
+  clips: OpenCutExportManifestClip[]
+}
+
+export type OpenCutExportManifestClip = {
+  clip_id: string
+  video_file: string
+}
+
 export type OpenCutExportQaResponse = {
   session_id: string
   clip_count: number

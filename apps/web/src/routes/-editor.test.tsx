@@ -150,7 +150,7 @@ describe('EditorPage', () => {
     expect(getTimelineSpec).toHaveBeenCalledWith('20260708-opencut-fixture')
   })
 
-  it('builds an OpenCut export report from applied timeline and submits QA', async () => {
+  it('builds an OpenCut export manifest from applied timeline and submits QA', async () => {
     const analyze = vi.fn(async () => analyzedCandidateResponse())
     const getTimelineSpec = vi.fn(async () => ({
       ...mockTimelineSpec,
@@ -168,7 +168,7 @@ describe('EditorPage', () => {
         },
       ],
     }))
-    const verifyOpenCutExport = vi.fn(async () => ({
+    const verifyOpenCutExportManifest = vi.fn(async () => ({
       session_id: '20260708-opencut-fixture',
       clip_count: 1,
       total_duration_sec: 26,
@@ -177,7 +177,7 @@ describe('EditorPage', () => {
     render(
       <EditorShell
         timelineSpec={mockTimelineSpec}
-        sidecarClient={{ analyze, getTimelineSpec, verifyOpenCutExport }}
+        sidecarClient={{ analyze, getTimelineSpec, verifyOpenCutExportManifest }}
       />
     )
 
@@ -185,26 +185,17 @@ describe('EditorPage', () => {
     await waitFor(() => expect(screen.getByText('p02-c01')).toBeTruthy())
     fireEvent.click(screen.getByRole('button', { name: 'Apply p02-c01' }))
     await waitFor(() => expect(screen.getByText('p02-c01-video')).toBeTruthy())
-    fireEvent.change(screen.getByLabelText('Integrated LUFS'), {
-      target: { value: '-14.2' },
-    })
     fireEvent.click(screen.getByRole('button', { name: 'Run Export QA' }))
 
     await waitFor(() => expect(screen.getByText('QA passed: 1 clip, 26.0s')).toBeTruthy())
-    expect(verifyOpenCutExport).toHaveBeenCalledWith('20260708-opencut-fixture', {
+    expect(verifyOpenCutExportManifest).toHaveBeenCalledWith('20260708-opencut-fixture', {
       session_id: '20260708-opencut-fixture',
-      renderer: 'opencut',
       exported_at: expect.any(String),
       fingerprint: mockTimelineSpec.fingerprint,
-      ok: true,
       clips: [
         {
           clip_id: 'p02-c01',
           video_file: 'final/p02-c01.mp4',
-          duration_sec: 26,
-          integrated_lufs: -14.2,
-          subtitle_evidence_file: 'qa/opencut-subtitles/p02-c01.jpg',
-          errors: [],
         },
       ],
     })
@@ -213,7 +204,7 @@ describe('EditorPage', () => {
   it('applies all analyzed candidates and submits export QA for every clip', async () => {
     const analyze = vi.fn(async () => multiAnalyzedCandidateResponse())
     const getTimelineSpec = vi.fn(async () => multiTimelineSpec())
-    const verifyOpenCutExport = vi.fn(async () => ({
+    const verifyOpenCutExportManifest = vi.fn(async () => ({
       session_id: '20260708-opencut-fixture',
       clip_count: 2,
       total_duration_sec: 54,
@@ -222,7 +213,7 @@ describe('EditorPage', () => {
     render(
       <EditorShell
         timelineSpec={mockTimelineSpec}
-        sidecarClient={{ analyze, getTimelineSpec, verifyOpenCutExport }}
+        sidecarClient={{ analyze, getTimelineSpec, verifyOpenCutExportManifest }}
       />
     )
 
@@ -233,34 +224,21 @@ describe('EditorPage', () => {
 
     await waitFor(() => expect(screen.getByText('p02-c01-video')).toBeTruthy())
     expect(screen.getByText('p03-c01-video')).toBeTruthy()
-    const lufsInputs = screen.getAllByLabelText('Integrated LUFS')
-    fireEvent.change(lufsInputs[0], { target: { value: '-14.2' } })
-    fireEvent.change(lufsInputs[1], { target: { value: '-13.9' } })
     fireEvent.click(screen.getByRole('button', { name: 'Run Export QA' }))
 
     await waitFor(() => expect(screen.getByText('QA passed: 2 clips, 54.0s')).toBeTruthy())
-    expect(verifyOpenCutExport).toHaveBeenCalledWith('20260708-opencut-fixture', {
+    expect(verifyOpenCutExportManifest).toHaveBeenCalledWith('20260708-opencut-fixture', {
       session_id: '20260708-opencut-fixture',
-      renderer: 'opencut',
       exported_at: expect.any(String),
       fingerprint: mockTimelineSpec.fingerprint,
-      ok: true,
       clips: [
         {
           clip_id: 'p02-c01',
           video_file: 'final/p02-c01.mp4',
-          duration_sec: 26,
-          integrated_lufs: -14.2,
-          subtitle_evidence_file: 'qa/opencut-subtitles/p02-c01.jpg',
-          errors: [],
         },
         {
           clip_id: 'p03-c01',
           video_file: 'final/p03-c01.mp4',
-          duration_sec: 28,
-          integrated_lufs: -13.9,
-          subtitle_evidence_file: 'qa/opencut-subtitles/p03-c01.jpg',
-          errors: [],
         },
       ],
     })
@@ -284,11 +262,11 @@ describe('EditorPage', () => {
         },
       ],
     }))
-    const verifyOpenCutExport = vi.fn()
+    const verifyOpenCutExportManifest = vi.fn()
     render(
       <EditorShell
         timelineSpec={mockTimelineSpec}
-        sidecarClient={{ analyze, getTimelineSpec, verifyOpenCutExport }}
+        sidecarClient={{ analyze, getTimelineSpec, verifyOpenCutExportManifest }}
       />
     )
 
@@ -296,13 +274,13 @@ describe('EditorPage', () => {
     await waitFor(() => expect(screen.getByText('p02-c01')).toBeTruthy())
     fireEvent.click(screen.getByRole('button', { name: 'Apply p02-c01' }))
     await waitFor(() => expect(screen.getByText('p02-c01-video')).toBeTruthy())
-    fireEvent.change(screen.getByLabelText('Integrated LUFS'), {
-      target: { value: 'bad-lufs' },
+    fireEvent.change(screen.getByLabelText('Exported video file for p02-c01'), {
+      target: { value: '' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'Run Export QA' }))
 
-    await waitFor(() => expect(screen.getByText('integrated LUFS is invalid')).toBeTruthy())
-    expect(verifyOpenCutExport).not.toHaveBeenCalled()
+    await waitFor(() => expect(screen.getByText('video file is missing')).toBeTruthy())
+    expect(verifyOpenCutExportManifest).not.toHaveBeenCalled()
   })
 })
 

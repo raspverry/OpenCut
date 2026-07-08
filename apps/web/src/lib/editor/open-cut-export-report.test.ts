@@ -2,9 +2,35 @@ import { describe, expect, it } from 'vitest'
 
 import { applyTimelineSpec } from './apply-timeline-spec'
 import { mockTimelineSpec } from './mock-timeline-spec'
-import { buildOpenCutExportReport } from './open-cut-export-report'
+import { buildOpenCutExportManifest, buildOpenCutExportReport } from './open-cut-export-report'
 
 describe('buildOpenCutExportReport', () => {
+  it('builds a sidecar QA manifest from applied timeline export files', () => {
+    const timeline = applyTimelineSpec(mockTimelineSpec)
+
+    const manifest = buildOpenCutExportManifest(timeline, {
+      exportedAt: '2026-07-08T12:05:00+09:00',
+      outputs: [
+        {
+          clipId: 'p01-c01',
+          videoFile: 'final/p01-c01.mp4',
+        },
+      ],
+    })
+
+    expect(manifest).toEqual({
+      session_id: '20260708-opencut-fixture',
+      exported_at: '2026-07-08T12:05:00+09:00',
+      fingerprint: mockTimelineSpec.fingerprint,
+      clips: [
+        {
+          clip_id: 'p01-c01',
+          video_file: 'final/p01-c01.mp4',
+        },
+      ],
+    })
+  })
+
   it('builds a sidecar QA report from applied timeline export outputs', () => {
     const timeline = applyTimelineSpec(mockTimelineSpec)
 

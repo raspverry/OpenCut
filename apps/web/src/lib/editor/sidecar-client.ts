@@ -3,6 +3,7 @@ import type {
   Candidates,
   IngestResponse,
   LanguageCode,
+  OpenCutExportManifest,
   OpenCutExportQaResponse,
   OpenCutExportReport,
   SessionResponse,
@@ -96,6 +97,16 @@ export function createSidecarClient(options: { baseUrl?: string; fetcher?: Fetch
         {
           method: 'POST',
           body: JSON.stringify(report),
+        }
+      )
+    },
+    verifyOpenCutExportManifest(sessionId: string, manifest: OpenCutExportManifest) {
+      return requestJson<OpenCutExportQaResponse>(
+        fetcher,
+        `${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/qa/opencut-export/manifest`,
+        {
+          method: 'POST',
+          body: JSON.stringify(manifest),
         }
       )
     },

@@ -1,5 +1,5 @@
 import type { AppliedTimeline } from './apply-timeline-spec'
-import type { OpenCutExportReport } from './types'
+import type { OpenCutExportManifest, OpenCutExportReport } from './types'
 
 export type OpenCutExportOutput = {
   clipId: string
@@ -11,6 +11,34 @@ export type OpenCutExportOutput = {
 export type BuildOpenCutExportReportInput = {
   exportedAt: string
   outputs: OpenCutExportOutput[]
+}
+
+export type OpenCutExportManifestOutput = {
+  clipId: string
+  videoFile: string
+}
+
+export type BuildOpenCutExportManifestInput = {
+  exportedAt: string
+  outputs: OpenCutExportManifestOutput[]
+}
+
+export function buildOpenCutExportManifest(
+  timeline: AppliedTimeline,
+  input: BuildOpenCutExportManifestInput
+): OpenCutExportManifest {
+  const outputsByClip = new Map(input.outputs.map((output) => [output.clipId, output]))
+  const videoElements = timeline.elements.filter((element) => element.type === 'video')
+
+  return {
+    session_id: timeline.sessionId,
+    exported_at: input.exportedAt,
+    fingerprint: timeline.fingerprint,
+    clips: videoElements.map((video) => ({
+      clip_id: video.clipId,
+      video_file: outputsByClip.get(video.clipId)?.videoFile ?? '',
+    })),
+  }
 }
 
 export function buildOpenCutExportReport(

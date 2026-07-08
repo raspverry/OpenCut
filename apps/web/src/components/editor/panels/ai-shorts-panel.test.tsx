@@ -5,6 +5,7 @@ import { renderToString } from 'react-dom/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { AnalyzeResponse } from '../../../lib/editor/types'
+import { mockTimelineSpec } from '../../../lib/editor/mock-timeline-spec'
 import { AiShortsPanel } from './ai-shorts-panel'
 
 describe('AiShortsPanel', () => {
@@ -57,6 +58,28 @@ describe('AiShortsPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Analyze' }))
 
     await waitFor(() => expect(screen.getByText('하이라이트 후보 파일이 없습니다')).toBeTruthy())
+  })
+
+  it('shows an empty candidate state before analyze', () => {
+    render(<AiShortsPanel sessionId="20260708-sale" clips={[]} client={idleClient()} />)
+
+    expect(screen.getByText('Run Analyze to generate candidates')).toBeTruthy()
+  })
+
+  it('shows a timeline applied state after applying a clip', async () => {
+    const getTimelineSpec = vi.fn(async () => mockTimelineSpec)
+    render(
+      <AiShortsPanel
+        sessionId="20260708-sale"
+        clips={[mockTimelineSpec.clips[0]]}
+        client={{ getTimelineSpec }}
+        onApplyTimeline={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apply p01-c01' }))
+
+    await waitFor(() => expect(screen.getByText('Applied 1 clip to timeline')).toBeTruthy())
   })
 
   it('server renders without falling back to client rendering', () => {

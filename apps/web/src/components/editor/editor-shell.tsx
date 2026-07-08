@@ -21,12 +21,15 @@ export function EditorShell({ timelineSpec, sidecarClient }: EditorShellProps) {
   const [appliedTimeline, setAppliedTimeline] = useState<AppliedTimeline | null>(null)
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main className="min-h-screen bg-muted/30 font-sans text-foreground">
       <section aria-label="OpenCut AI Shorts editor" className="flex min-h-screen flex-col">
-        <header className="border-b px-5 py-3">
-          <h1 className="text-lg font-semibold">OpenCut AI Shorts</h1>
+        <header className="flex h-12 items-center justify-between border-b bg-background px-5 shadow-sm shadow-black/5">
+          <h1 className="text-sm font-semibold tracking-tight">OpenCut AI Shorts</h1>
+          <span className="rounded-md border bg-muted/35 px-2 py-1 text-[0.6875rem] font-medium text-muted-foreground">
+            Session {sessionId}
+          </span>
         </header>
-        <div className="grid flex-1 grid-cols-[280px_1fr_320px] grid-rows-[1fr_160px_220px] gap-px bg-border">
+        <div className="grid flex-1 grid-cols-[280px_minmax(0,1fr)_320px] grid-rows-[minmax(0,1fr)_auto_minmax(220px,auto)] gap-px bg-border">
           <SourceMediaPanel
             client={client}
             sessionId={sessionId}
