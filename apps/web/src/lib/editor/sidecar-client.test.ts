@@ -119,6 +119,28 @@ describe('createSidecarClient', () => {
     ])
   })
 
+  it('loads and updates session product catalogs', async () => {
+    const calls: Array<[string, RequestInit | undefined]> = []
+    const config = sessionConfig()
+    const fetcher = async (input: string | URL | Request, init?: RequestInit) => {
+      calls.push([String(input), init])
+      return jsonResponse(config)
+    }
+    const client = createSidecarClient({ fetcher })
+
+    const loaded = await client.getSessionConfig('20260708-sale')
+    const updated = await client.updateSessionProducts('20260708-sale', {
+      products: config.products,
+    })
+
+    expect(loaded.products[0]?.name).toBe('泡クリーム')
+    expect(updated.products[0]?.id).toBe('p01')
+    expect(calls[0][0]).toBe('http://127.0.0.1:8789/api/sessions/20260708-sale/config')
+    expect(calls[1][0]).toBe('http://127.0.0.1:8789/api/sessions/20260708-sale/products')
+    expect(calls[1][1]?.method).toBe('PUT')
+    expect(calls[1][1]?.body).toBe(JSON.stringify({ products: config.products }))
+  })
+
   it('posts OpenCut export reports for QA', async () => {
     const calls: Array<[string, RequestInit | undefined]> = []
     const report = {
@@ -290,5 +312,26 @@ function captionCueFile() {
       max_lines: 2,
       safe_area: { anchor: 'bottom', margin_px: 640 },
     },
+  }
+}
+
+function sessionConfig() {
+  return {
+    session_id: '20260708-sale',
+    title: 'sale',
+    language: 'ja',
+    source_language: 'zh',
+    recorded_at: '',
+    products: [
+      {
+        id: 'p01',
+        name: '泡クリーム',
+        aliases: ['泡'],
+        price: '¥2,980',
+        selling_points: ['保湿'],
+        tiktok_shop_note: 'p01 tag',
+      },
+    ],
+    defaults: { max_clips: 12 },
   }
 }

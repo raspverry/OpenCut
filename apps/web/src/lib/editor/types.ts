@@ -4,6 +4,25 @@ export type SourceLanguageCode = 'ja' | 'ko' | 'zh'
 
 export type SidecarProvider = 'anthropic' | 'openai'
 
+export type Product = {
+  id: string
+  name: string
+  aliases: string[]
+  price: string
+  selling_points: string[]
+  tiktok_shop_note: string
+}
+
+export type SessionConfig = {
+  session_id: string
+  title: string
+  language: LanguageCode
+  source_language: SourceLanguageCode | null
+  recorded_at: string
+  products: Product[]
+  defaults: Record<string, unknown>
+}
+
 export type SessionResponse = {
   session_id: string
   path: string

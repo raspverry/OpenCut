@@ -10,7 +10,9 @@ import type {
   OpenCutExportManifestDraftRequest,
   OpenCutExportQaResponse,
   OpenCutExportReport,
+  Product,
   SessionResponse,
+  SessionConfig,
   SidecarProvider,
   SourceLanguageCode,
   TimelineSpec,
@@ -29,6 +31,10 @@ export type CreateSessionRequest = {
 export type IngestRequest = {
   input_path: string
   force?: boolean
+}
+
+export type ProductCatalogRequest = {
+  products: Product[]
 }
 
 export type AnalyzeRequest = {
@@ -71,6 +77,22 @@ export function createSidecarClient(options: { baseUrl?: string; fetcher?: Fetch
         `${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/ingest`,
         {
           method: 'POST',
+          body: JSON.stringify(payload),
+        }
+      )
+    },
+    getSessionConfig(sessionId: string) {
+      return requestJson<SessionConfig>(
+        fetcher,
+        `${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/config`
+      )
+    },
+    updateSessionProducts(sessionId: string, payload: ProductCatalogRequest) {
+      return requestJson<SessionConfig>(
+        fetcher,
+        `${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/products`,
+        {
+          method: 'PUT',
           body: JSON.stringify(payload),
         }
       )

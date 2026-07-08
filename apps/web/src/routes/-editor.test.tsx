@@ -146,6 +146,56 @@ describe('EditorPage', () => {
     expect(screen.getByText('Session 20260708-schwanengarten-zh-ja')).toBeTruthy()
   })
 
+  it('loads and saves a product catalog through the sidecar', async () => {
+    const getSessionConfig = vi.fn(async () => sessionConfig())
+    const updateSessionProducts = vi.fn(async (_sessionId: string, payload: { products: unknown[] }) => ({
+      ...sessionConfig(),
+      products: payload.products,
+    }))
+    render(
+      <EditorShell
+        timelineSpec={mockTimelineSpec}
+        sidecarClient={{ getSessionConfig, updateSessionProducts }}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Load Catalog' }))
+    await waitFor(() => expect(screen.getByText('상품 1개 로드')).toBeTruthy())
+    expect((screen.getByLabelText('Product catalog JSON') as HTMLTextAreaElement).value).toBe(
+      JSON.stringify(sessionConfig().products, null, 2)
+    )
+    fireEvent.change(screen.getByLabelText('Product catalog JSON'), {
+      target: {
+        value: JSON.stringify([
+          {
+            id: 'p02',
+            name: '新作セラム',
+            aliases: ['セラム'],
+            price: '¥3,980',
+            selling_points: ['ツヤ'],
+            tiktok_shop_note: 'p02 tag',
+          },
+        ]),
+      },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save Catalog' }))
+
+    await waitFor(() => expect(screen.getByText('상품 1개 저장')).toBeTruthy())
+    expect(getSessionConfig).toHaveBeenCalledWith('20260708-opencut-fixture')
+    expect(updateSessionProducts).toHaveBeenCalledWith('20260708-opencut-fixture', {
+      products: [
+        {
+          id: 'p02',
+          name: '新作セラム',
+          aliases: ['セラム'],
+          price: '¥3,980',
+          selling_points: ['ツヤ'],
+          tiktok_shop_note: 'p02 tag',
+        },
+      ],
+    })
+  })
+
   it('applies an analyzed candidate into timeline lanes', async () => {
     const analyze = vi.fn(async () => analyzedCandidateResponse())
     const getTimelineSpec = vi.fn(async () => ({
@@ -505,5 +555,26 @@ function captionCueFile(clipId: string) {
       max_lines: 2,
       safe_area: { anchor: 'bottom', margin_px: 640 },
     },
+  }
+}
+
+function sessionConfig() {
+  return {
+    session_id: '20260708-opencut-fixture',
+    title: 'sale',
+    language: 'ja',
+    source_language: 'zh',
+    recorded_at: '',
+    products: [
+      {
+        id: 'p01',
+        name: '泡クリーム',
+        aliases: ['泡'],
+        price: '¥2,980',
+        selling_points: ['保湿'],
+        tiktok_shop_note: 'p01 tag',
+      },
+    ],
+    defaults: { max_clips: 12 },
   }
 }
