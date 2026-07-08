@@ -168,4 +168,46 @@ describe('ExportQaPanel', () => {
     ).toBe('final/p01-c01.mp4')
     expect(screen.getByRole('status').textContent).toBe('Uploaded p01-c01: 3 bytes')
   })
+
+  it('renders and uploads MP4 artifacts through an OpenCut renderer adapter', async () => {
+    const timeline = applyTimelineSpec(mockTimelineSpec)
+    const rendered = new Uint8Array([9, 8, 7]).buffer
+    const renderClipExport = vi.fn(async () => rendered)
+    const uploadOpenCutExportArtifact = vi.fn(async () => ({
+      session_id: '20260708-opencut-fixture',
+      clip_id: 'p01-c01',
+      video_file: 'final/p01-c01.mp4',
+      byte_size: 3,
+    }))
+
+    render(
+      <ExportQaPanel
+        sessionId="20260708-opencut-fixture"
+        timeline={timeline}
+        client={{
+          uploadOpenCutExportArtifact,
+          draftOpenCutExportManifest: vi.fn(),
+          verifyOpenCutExportManifest: vi.fn(),
+        }}
+        renderer={{ renderClipExport }}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Render and upload p01-c01' }))
+
+    await waitFor(() => expect(renderClipExport).toHaveBeenCalled())
+    expect(renderClipExport).toHaveBeenCalledWith({
+      clipId: 'p01-c01',
+      timeline,
+    })
+    expect(uploadOpenCutExportArtifact).toHaveBeenCalledWith(
+      '20260708-opencut-fixture',
+      'p01-c01',
+      rendered
+    )
+    expect(
+      (screen.getByLabelText('Exported video file for p01-c01') as HTMLInputElement).value
+    ).toBe('final/p01-c01.mp4')
+    expect(screen.getByRole('status').textContent).toBe('Rendered and uploaded p01-c01: 3 bytes')
+  })
 })

@@ -5,6 +5,15 @@ import type { AppliedTimeline } from '../../../lib/editor/apply-timeline-spec'
 import { buildOpenCutExportManifest } from '../../../lib/editor/open-cut-export-report'
 import type { SidecarClient } from '../../../lib/editor/sidecar-client'
 
+type RenderClipExportInput = {
+  clipId: string
+  timeline: AppliedTimeline
+}
+
+type OpenCutExportRenderer = {
+  renderClipExport: (input: RenderClipExportInput) => Promise<ArrayBuffer>
+}
+
 type ExportQaPanelProps = {
   sessionId: string
   timeline: AppliedTimeline | null
@@ -14,13 +23,14 @@ type ExportQaPanelProps = {
       'draftOpenCutExportManifest' | 'uploadOpenCutExportArtifact' | 'verifyOpenCutExportManifest'
     >
   >
+  renderer?: OpenCutExportRenderer
 }
 
 type ClipExportMetadata = {
   videoFile: string
 }
 
-export function ExportQaPanel({ sessionId, timeline, client }: ExportQaPanelProps) {
+export function ExportQaPanel({ sessionId, timeline, client, renderer }: ExportQaPanelProps) {
   const clipIds = useMemo(
     () =>
       timeline?.elements
@@ -35,7 +45,8 @@ export function ExportQaPanel({ sessionId, timeline, client }: ExportQaPanelProp
   const [isRunning, setIsRunning] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
-  const isBusy = isRunning || isRefreshing || isUploading
+  const [isRendering, setIsRendering] = useState(false)
+  const isBusy = isRunning || isRefreshing || isUploading || isRendering
 
   useEffect(() => {
     setOutputs((current) =>
@@ -182,6 +193,39 @@ export function ExportQaPanel({ sessionId, timeline, client }: ExportQaPanelProp
     }
   }
 
+  async function renderAndUploadExport(clipId: string) {
+    if (!timeline) {
+      setStatus('timeline 적용 후 렌더하세요')
+      setStatusKind('error')
+      return
+    }
+    if (!renderer) {
+      setStatus('OpenCut renderer adapter가 없습니다')
+      setStatusKind('error')
+      return
+    }
+    if (!client?.uploadOpenCutExportArtifact) {
+      setStatus('sidecar export artifact 업로드 경로가 없습니다')
+      setStatusKind('error')
+      return
+    }
+    setIsRendering(true)
+    setStatus(`Rendering ${clipId}...`)
+    setStatusKind('info')
+    try {
+      const buffer = await renderer.renderClipExport({ clipId, timeline })
+      const artifact = await client.uploadOpenCutExportArtifact(sessionId, clipId, buffer)
+      updateOutput(clipId, 'videoFile', artifact.video_file)
+      setStatus(`Rendered and uploaded ${clipId}: ${artifact.byte_size} bytes`)
+      setStatusKind('info')
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'OpenCut render artifact 업로드 실패')
+      setStatusKind('error')
+    } finally {
+      setIsRendering(false)
+    }
+  }
+
   return (
     <section
       aria-busy={isBusy}
@@ -250,6 +294,22 @@ export function ExportQaPanel({ sessionId, timeline, client }: ExportQaPanelProp
                   }}
                 />
               </label>
+              {renderer ? (
+                <button
+                  type="button"
+                  aria-label={`Render and upload ${clipId}`}
+                  className="mt-3 inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md border bg-background px-3 text-xs font-medium shadow-sm shadow-black/5 transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-55"
+                  disabled={isBusy}
+                  onClick={() => {
+                    void renderAndUploadExport(clipId)
+                  }}
+                >
+                  {isRendering ? (
+                    <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                  ) : null}
+                  Render & Upload
+                </button>
+              ) : null}
             </div>
           )
         })}
