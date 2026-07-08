@@ -1,5 +1,6 @@
 import type {
   AnalyzeResponse,
+  CaptionCueFile,
   Candidates,
   IngestResponse,
   LanguageCode,
@@ -93,6 +94,12 @@ export function createSidecarClient(options: { baseUrl?: string; fetcher?: Fetch
       return requestJson<TimelineSpec>(
         fetcher,
         `${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/timeline-spec`
+      )
+    },
+    getCaptionCues(sessionId: string, clipId: string) {
+      return requestJson<CaptionCueFile>(
+        fetcher,
+        `${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/caption-cues/${encodeURIComponent(clipId)}`
       )
     },
     verifyOpenCutExport(sessionId: string, report: OpenCutExportReport) {

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 
 import type { AppliedTimeline } from '../../lib/editor/apply-timeline-spec'
 import type { TimelineSpec } from '../../lib/editor/types'
+import { createBrowserClipRenderer } from '../../lib/editor/browser-clip-renderer'
 import { createSidecarClient, type SidecarClient } from '../../lib/editor/sidecar-client'
 import { AiShortsPanel } from './panels/ai-shorts-panel'
 import { ExportQaPanel } from './panels/export-qa-panel'
@@ -18,7 +19,22 @@ export function EditorShell({ timelineSpec, sidecarClient }: EditorShellProps) {
   const client = useMemo(() => sidecarClient ?? createSidecarClient(), [sidecarClient])
   const [sessionId, setSessionId] = useState(timelineSpec.session_id)
   const [sourceFile, setSourceFile] = useState(timelineSpec.source_video.file)
+  const [browserSourceFile, setBrowserSourceFile] = useState<File | null>(null)
   const [appliedTimeline, setAppliedTimeline] = useState<AppliedTimeline | null>(null)
+  const renderer = useMemo(() => {
+    if (!browserSourceFile) {
+      return undefined
+    }
+    return createBrowserClipRenderer({
+      sourceFile: browserSourceFile,
+      loadCaptionCues: (clipId) => {
+        if (!client.getCaptionCues) {
+          throw new Error('caption cue 경로가 없습니다')
+        }
+        return client.getCaptionCues(sessionId, clipId)
+      },
+    })
+  }, [browserSourceFile, client, sessionId])
 
   return (
     <main className="min-h-screen bg-muted/30 font-sans text-foreground">
@@ -34,17 +50,24 @@ export function EditorShell({ timelineSpec, sidecarClient }: EditorShellProps) {
             client={client}
             sessionId={sessionId}
             sourceFile={sourceFile}
+            browserSourceFile={browserSourceFile}
             onSessionIdChange={setSessionId}
             onSourceFileChange={setSourceFile}
+            onBrowserSourceFileChange={setBrowserSourceFile}
           />
-          <PreviewPlaceholder />
+          <PreviewPlaceholder sourceFile={browserSourceFile} />
           <AiShortsPanel
             sessionId={sessionId}
             clips={timelineSpec.clips}
             client={client}
             onApplyTimeline={setAppliedTimeline}
           />
-          <ExportQaPanel sessionId={sessionId} timeline={appliedTimeline} client={client} />
+          <ExportQaPanel
+            sessionId={sessionId}
+            timeline={appliedTimeline}
+            client={client}
+            renderer={renderer}
+          />
           <TimelinePlaceholder clips={timelineSpec.clips} appliedTimeline={appliedTimeline} />
         </div>
       </section>

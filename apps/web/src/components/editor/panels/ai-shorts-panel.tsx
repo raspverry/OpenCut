@@ -25,6 +25,7 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [candidateCount, setCandidateCount] = useState(0)
   const [successMessage, setSuccessMessage] = useState('')
+  const [loadingMessage, setLoadingMessage] = useState('')
   const [analyzedClips, setAnalyzedClips] = useState<CandidateClip[] | null>(null)
   const [errorMessage, setErrorMessage] = useState('')
 
@@ -35,6 +36,7 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
       return
     }
     setStatus('loading')
+    setLoadingMessage('Analyzing...')
     setSuccessMessage('')
     setErrorMessage('')
     try {
@@ -55,6 +57,30 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
       setStatus('success')
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'analyze 실패')
+      setStatus('error')
+    }
+  }
+
+  async function loadCandidates() {
+    if (!sidecarClient.getCandidates) {
+      setErrorMessage('sidecar candidates 경로가 없습니다')
+      setStatus('error')
+      return
+    }
+    setStatus('loading')
+    setLoadingMessage('Loading candidates...')
+    setSuccessMessage('')
+    setErrorMessage('')
+    try {
+      const result = await sidecarClient.getCandidates(sessionId)
+      setAnalyzedClips(result.clips)
+      setCandidateCount(result.clips.length)
+      setSuccessMessage(
+        `${result.clips.length} candidate${result.clips.length === 1 ? '' : 's'} loaded`
+      )
+      setStatus('success')
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'candidate 로드 실패')
       setStatus('error')
     }
   }
@@ -111,7 +137,7 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
 
   const statusText =
     status === 'loading'
-      ? 'Analyzing...'
+      ? loadingMessage || 'Loading...'
       : status === 'success'
         ? successMessage || `${candidateCount} candidate${candidateCount === 1 ? '' : 's'} ready`
         : status === 'error'
@@ -176,6 +202,16 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
         >
           Analyze
         </button>
+        {sidecarClient.getCandidates ? (
+          <button
+            type="button"
+            onClick={loadCandidates}
+            disabled={status === 'loading'}
+            className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-background px-2.5 text-xs font-medium shadow-sm shadow-black/5 transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
+          >
+            Load Candidates
+          </button>
+        ) : null}
         {sidecarClient.getTimelineSpec && onApplyTimeline && displayClips.length > 1 ? (
           <button
             type="button"

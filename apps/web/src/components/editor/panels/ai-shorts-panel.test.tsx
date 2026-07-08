@@ -46,6 +46,25 @@ describe('AiShortsPanel', () => {
     })
   })
 
+  it('loads existing candidates without rerunning analysis', async () => {
+    const getCandidates = vi.fn(async () => analyzeResponse(2).candidates)
+    render(
+      <AiShortsPanel
+        sessionId="20260708-sale"
+        clips={[]}
+        client={{ getCandidates }}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Load Candidates' }))
+
+    expect(screen.getByText('Loading candidates...')).toBeTruthy()
+    await waitFor(() => expect(screen.getByText('2 candidates loaded')).toBeTruthy())
+    expect(screen.getByText('p01-c01')).toBeTruthy()
+    expect(screen.getByText('p01-c02')).toBeTruthy()
+    expect(getCandidates).toHaveBeenCalledWith('20260708-sale')
+  })
+
   it('shows Korean error detail when analyze fails', async () => {
     const analyze = vi.fn(async () => {
       throw new Error('하이라이트 후보 파일이 없습니다')

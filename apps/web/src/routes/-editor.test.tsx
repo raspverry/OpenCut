@@ -7,8 +7,26 @@ import { EditorPage } from '../components/editor/editor-page'
 import { EditorShell } from '../components/editor/editor-shell'
 import { mockTimelineSpec } from '../lib/editor/mock-timeline-spec'
 
+const browserRendererMocks = vi.hoisted(() => ({
+  renderClipExport: vi.fn(async () => new Uint8Array([1, 2, 3, 4]).buffer),
+}))
+
+vi.mock('../lib/editor/browser-clip-renderer', () => ({
+  createBrowserClipRenderer: vi.fn(
+    (options: { loadCaptionCues: (clipId: string) => Promise<unknown> }) => ({
+      renderClipExport: async (input: { clipId: string }) => {
+        await options.loadCaptionCues(input.clipId)
+        return browserRendererMocks.renderClipExport(input)
+      },
+    })
+  ),
+}))
+
 describe('EditorPage', () => {
-  afterEach(() => cleanup())
+  afterEach(() => {
+    cleanup()
+    browserRendererMocks.renderClipExport.mockClear()
+  })
 
   it('renders the OpenCut AI Shorts editor shell', () => {
     render(<EditorPage />)
@@ -113,6 +131,17 @@ describe('EditorPage', () => {
       max_clip_sec: 30,
       force: true,
     })
+  })
+
+  it('loads an existing sidecar session id', async () => {
+    render(<EditorShell timelineSpec={mockTimelineSpec} sidecarClient={{}} />)
+
+    fireEvent.change(screen.getByLabelText('Session ID'), {
+      target: { value: '20260708-schwanengarten-zh-ja' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Load Session' }))
+
+    expect(screen.getByText('Session 20260708-schwanengarten-zh-ja')).toBeTruthy()
   })
 
   it('applies an analyzed candidate into timeline lanes', async () => {
@@ -284,6 +313,69 @@ describe('EditorPage', () => {
     await waitFor(() => expect(screen.getByText('video file is missing')).toBeTruthy())
     expect(verifyOpenCutExportManifest).not.toHaveBeenCalled()
   })
+
+  it('renders and uploads an applied clip from a browser source file', async () => {
+    const analyze = vi.fn(async () => analyzedCandidateResponse())
+    const getTimelineSpec = vi.fn(async () => ({
+      ...mockTimelineSpec,
+      clips: [
+        {
+          clip_id: 'p02-c01',
+          product_id: 'p02',
+          source_range_sec: [32, 58],
+          timeline_start_sec: 0,
+          hook_text: 'この落ち方見て',
+          caption_file: 'caption_cues/p02-c01.json',
+          caption_style: 'ja-shorts-safe-v1',
+          score: 94,
+          reason: '価格、実演、使用感が連続している',
+        },
+      ],
+    }))
+    const getCaptionCues = vi.fn(async () => captionCueFile('p02-c01'))
+    const uploadOpenCutExportArtifact = vi.fn(async () => ({
+      session_id: '20260708-opencut-fixture',
+      clip_id: 'p02-c01',
+      video_file: 'final/p02-c01.mp4',
+      byte_size: 4,
+    }))
+    render(
+      <EditorShell
+        timelineSpec={mockTimelineSpec}
+        sidecarClient={{
+          analyze,
+          getTimelineSpec,
+          getCaptionCues,
+          uploadOpenCutExportArtifact,
+        }}
+      />
+    )
+
+    fireEvent.change(screen.getByLabelText('Browser source file'), {
+      target: {
+        files: [new File(['video'], 'source.mp4', { type: 'video/mp4' })],
+      },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze' }))
+    await waitFor(() => expect(screen.getByText('p02-c01')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Apply p02-c01' }))
+    await waitFor(() => expect(screen.getByText('p02-c01-video')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Render and upload p02-c01' }))
+
+    await waitFor(() =>
+      expect(screen.getByText('Rendered and uploaded p02-c01: 4 bytes')).toBeTruthy()
+    )
+    expect(getCaptionCues).toHaveBeenCalledWith('20260708-opencut-fixture', 'p02-c01')
+    expect(browserRendererMocks.renderClipExport).toHaveBeenCalledWith({
+      clipId: 'p02-c01',
+      timeline: expect.objectContaining({ sessionId: '20260708-opencut-fixture' }),
+    })
+    expect(uploadOpenCutExportArtifact).toHaveBeenCalledWith(
+      '20260708-opencut-fixture',
+      'p02-c01',
+      expect.any(ArrayBuffer)
+    )
+  })
 })
 
 function analyzedCandidateResponse() {
@@ -383,5 +475,31 @@ function multiTimelineSpec() {
         reason: '使い方と仕上がりが連続している',
       },
     ],
+  }
+}
+
+function captionCueFile(clipId: string) {
+  return {
+    clip_id: clipId,
+    language: 'ja',
+    preset: 'ja-shorts-safe-v1',
+    source_range_sec: [32, 58],
+    cues: [
+      {
+        cue_id: `${clipId}-q001`,
+        source_segment_id: 0,
+        start_sec: 32,
+        end_sec: 35,
+        text: 'この落ち方見て',
+        words: [],
+      },
+    ],
+    style: {
+      format: 'word_pop',
+      font_family: 'Noto Sans CJK JP',
+      max_chars_per_line: 13,
+      max_lines: 2,
+      safe_area: { anchor: 'bottom', margin_px: 640 },
+    },
   }
 }

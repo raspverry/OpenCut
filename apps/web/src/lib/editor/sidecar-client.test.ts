@@ -75,7 +75,7 @@ describe('createSidecarClient', () => {
     )
   })
 
-  it('loads candidates and timeline specs', async () => {
+  it('loads candidates, timeline specs, and caption cues', async () => {
     const calls: string[] = []
     const fetcher = async (input: string | URL | Request) => {
       const url = String(input)
@@ -87,6 +87,9 @@ describe('createSidecarClient', () => {
           generated_at: 'now',
           clips: [],
         })
+      }
+      if (url.endsWith('/caption-cues/p01-c01')) {
+        return jsonResponse(captionCueFile())
       }
       return jsonResponse({
         session_id: '20260708-sale',
@@ -101,12 +104,15 @@ describe('createSidecarClient', () => {
 
     const candidates = await client.getCandidates('20260708-sale')
     const timelineSpec = await client.getTimelineSpec('20260708-sale')
+    const captionCues = await client.getCaptionCues('20260708-sale', 'p01-c01')
 
     expect(candidates.session_id).toBe('20260708-sale')
     expect(timelineSpec.renderer).toBe('opencut')
+    expect(captionCues.clip_id).toBe('p01-c01')
     expect(calls).toEqual([
       'http://127.0.0.1:8789/api/sessions/20260708-sale/candidates',
       'http://127.0.0.1:8789/api/sessions/20260708-sale/timeline-spec',
+      'http://127.0.0.1:8789/api/sessions/20260708-sale/caption-cues/p01-c01',
     ])
   })
 
@@ -256,4 +262,30 @@ function jsonResponse(body: unknown, status = 200) {
     status,
     headers: { 'content-type': 'application/json' },
   })
+}
+
+function captionCueFile() {
+  return {
+    clip_id: 'p01-c01',
+    language: 'ja',
+    preset: 'ja-shorts-safe-v1',
+    source_range_sec: [10, 28],
+    cues: [
+      {
+        cue_id: 'p01-c01-q001',
+        source_segment_id: 0,
+        start_sec: 10,
+        end_sec: 12,
+        text: 'このツヤ見て',
+        words: [],
+      },
+    ],
+    style: {
+      format: 'word_pop',
+      font_family: 'Noto Sans CJK JP',
+      max_chars_per_line: 13,
+      max_lines: 2,
+      safe_area: { anchor: 'bottom', margin_px: 640 },
+    },
+  }
 }

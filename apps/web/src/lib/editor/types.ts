@@ -126,3 +126,35 @@ export type OpenCutExportQaResponse = {
   total_duration_sec: number
   by_product: Record<string, number>
 }
+
+export type CaptionCueFile = {
+  clip_id: string
+  language: LanguageCode
+  preset: string
+  source_range_sec: [number, number]
+  cues: CaptionCue[]
+  style: {
+    format: 'plain' | 'word_pop' | 'karaoke'
+    font_family: string
+    max_chars_per_line: number
+    max_lines: number
+    safe_area: {
+      anchor: 'bottom' | 'top' | 'center'
+      margin_px: number
+    }
+  }
+}
+
+export type CaptionCue = {
+  cue_id: string
+  source_segment_id: number
+  start_sec: number
+  end_sec: number
+  text: string
+  words: Array<{
+    w: string
+    start: number
+    end: number
+    confidence: number | null
+  }>
+}
