@@ -42,6 +42,7 @@ export type Candidates = {
 export type AnalyzeResponse = {
   session_id: string
   provider: SidecarProvider
+  model: string
   source_language: SourceLanguageCode
   language: LanguageCode
   max_clip_sec: number

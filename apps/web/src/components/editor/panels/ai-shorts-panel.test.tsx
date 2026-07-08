@@ -15,10 +15,19 @@ describe('AiShortsPanel', () => {
     render(<AiShortsPanel sessionId="20260708-sale" clips={[]} client={idleClient()} />)
 
     expect((screen.getByLabelText('Provider') as HTMLSelectElement).value).toBe('openai')
+    expect((screen.getByLabelText('Model') as HTMLSelectElement).value).toBe('gpt-5.5')
     expect((screen.getByLabelText('Source Language') as HTMLSelectElement).value).toBe('ja')
     expect((screen.getByLabelText('Caption Language') as HTMLSelectElement).value).toBe('ja')
     expect(screen.getByText('Max 30s')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Analyze' })).toBeTruthy()
+  })
+
+  it('switches model choices with the selected provider', () => {
+    render(<AiShortsPanel sessionId="20260708-sale" clips={[]} client={idleClient()} />)
+
+    fireEvent.change(screen.getByLabelText('Provider'), { target: { value: 'anthropic' } })
+
+    expect((screen.getByLabelText('Model') as HTMLSelectElement).value).toBe('claude-sonnet-5')
   })
 
   it('shows loading and success state when analyze resolves', async () => {
@@ -39,6 +48,7 @@ describe('AiShortsPanel', () => {
     await waitFor(() => expect(screen.getByText('1 candidate ready')).toBeTruthy())
     expect(analyze).toHaveBeenCalledWith('20260708-sale', {
       provider: 'openai',
+      model: 'gpt-5.5',
       source_language: 'zh',
       language: 'ja',
       max_clip_sec: 30,
@@ -143,6 +153,7 @@ function analyzeResponse(count: number): AnalyzeResponse {
   return {
     session_id: '20260708-sale',
     provider: 'openai',
+    model: 'gpt-4.1',
     source_language: 'zh',
     language: 'ja',
     max_clip_sec: 30,

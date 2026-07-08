@@ -26,6 +26,7 @@ describe('createSidecarClient', () => {
       return jsonResponse({
         session_id: '20260708-sale',
         provider: 'openai',
+        model: 'gpt-4.1',
         source_language: 'zh',
         language: 'ja',
         max_clip_sec: 30,
@@ -54,6 +55,7 @@ describe('createSidecarClient', () => {
 
     const response = await client.analyze('20260708-sale', {
       provider: 'openai',
+      model: 'gpt-4.1',
       source_language: 'zh',
       language: 'ja',
       max_clip_sec: 30,
@@ -66,6 +68,7 @@ describe('createSidecarClient', () => {
     expect(calls[0][1]?.body).toBe(
       JSON.stringify({
         provider: 'openai',
+        model: 'gpt-4.1',
         source_language: 'zh',
         language: 'ja',
         max_clip_sec: 30,

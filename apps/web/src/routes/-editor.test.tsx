@@ -46,6 +46,7 @@ describe('EditorPage', () => {
     const analyze = vi.fn(async () => ({
       session_id: '20260708-opencut-fixture',
       provider: 'openai',
+      model: 'gpt-4.1',
       source_language: 'ja',
       language: 'ja',
       max_clip_sec: 30,
@@ -126,6 +127,7 @@ describe('EditorPage', () => {
     })
     expect(analyze).toHaveBeenCalledWith('20260708-live-sale', {
       provider: 'openai',
+      model: 'gpt-5.5',
       source_language: 'ja',
       language: 'ja',
       max_clip_sec: 30,
@@ -382,6 +384,7 @@ function analyzedCandidateResponse() {
   return {
     session_id: '20260708-opencut-fixture',
     provider: 'openai',
+    model: 'gpt-4.1',
     source_language: 'ja',
     language: 'ja',
     max_clip_sec: 30,
@@ -411,6 +414,7 @@ function multiAnalyzedCandidateResponse() {
   return {
     session_id: '20260708-opencut-fixture',
     provider: 'openai',
+    model: 'gpt-4.1',
     source_language: 'ja',
     language: 'ja',
     max_clip_sec: 30,

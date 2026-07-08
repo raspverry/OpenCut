@@ -33,6 +33,7 @@ export type IngestRequest = {
 
 export type AnalyzeRequest = {
   provider?: SidecarProvider
+  model?: string
   source_language?: SourceLanguageCode
   language?: LanguageCode
   max_clip_sec?: number

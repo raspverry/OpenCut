@@ -16,10 +16,21 @@ type AiShortsPanelProps = {
 }
 
 const MAX_CLIP_SEC = 30
+const MODEL_OPTIONS: Record<SidecarProvider, Array<{ label: string; value: string }>> = {
+  openai: [
+    { label: 'GPT-5.5', value: 'gpt-5.5' },
+    { label: 'GPT-4.1', value: 'gpt-4.1' },
+  ],
+  anthropic: [
+    { label: 'Claude Sonnet 5', value: 'claude-sonnet-5' },
+    { label: 'Claude 3.5 Sonnet', value: 'claude-3-5-sonnet-latest' },
+  ],
+}
 
 export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiShortsPanelProps) {
   const sidecarClient = useMemo(() => client ?? createSidecarClient(), [client])
   const [provider, setProvider] = useState<SidecarProvider>('openai')
+  const [model, setModel] = useState(MODEL_OPTIONS.openai[0]?.value ?? 'gpt-5.5')
   const [sourceLanguage, setSourceLanguage] = useState<SourceLanguageCode>('ja')
   const [language, setLanguage] = useState<LanguageCode>('ja')
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
@@ -42,6 +53,7 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
     try {
       const result = await sidecarClient.analyze(sessionId, {
         provider,
+        model,
         source_language: sourceLanguage,
         language,
         max_clip_sec: MAX_CLIP_SEC,
@@ -59,6 +71,11 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
       setErrorMessage(error instanceof Error ? error.message : 'analyze 실패')
       setStatus('error')
     }
+  }
+
+  function changeProvider(nextProvider: SidecarProvider) {
+    setProvider(nextProvider)
+    setModel(MODEL_OPTIONS[nextProvider][0]?.value ?? '')
   }
 
   async function loadCandidates() {
@@ -167,17 +184,32 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
           Max 30s
         </span>
       </div>
-      <div className="mt-4 grid grid-cols-3 gap-2">
+      <div className="mt-4 grid grid-cols-2 gap-2">
         <label className="space-y-1 text-xs text-muted-foreground">
           <span>Provider</span>
           <NativeSelect
             aria-label="Provider"
             value={provider}
-            onChange={(event) => setProvider(event.currentTarget.value as SidecarProvider)}
+            onChange={(event) => changeProvider(event.currentTarget.value as SidecarProvider)}
             className="w-full"
           >
             <NativeSelectOption value="anthropic">Anthropic</NativeSelectOption>
             <NativeSelectOption value="openai">OpenAI</NativeSelectOption>
+          </NativeSelect>
+        </label>
+        <label className="space-y-1 text-xs text-muted-foreground">
+          <span>Model</span>
+          <NativeSelect
+            aria-label="Model"
+            value={model}
+            onChange={(event) => setModel(event.currentTarget.value)}
+            className="w-full"
+          >
+            {MODEL_OPTIONS[provider].map((option) => (
+              <NativeSelectOption key={option.value} value={option.value}>
+                {option.label}
+              </NativeSelectOption>
+            ))}
           </NativeSelect>
         </label>
         <label className="space-y-1 text-xs text-muted-foreground">
