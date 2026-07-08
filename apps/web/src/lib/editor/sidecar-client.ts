@@ -3,6 +3,8 @@ import type {
   Candidates,
   IngestResponse,
   LanguageCode,
+  OpenCutExportQaResponse,
+  OpenCutExportReport,
   SessionResponse,
   SidecarProvider,
   TimelineSpec,
@@ -85,6 +87,16 @@ export function createSidecarClient(options: { baseUrl?: string; fetcher?: Fetch
       return requestJson<TimelineSpec>(
         fetcher,
         `${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/timeline-spec`
+      )
+    },
+    verifyOpenCutExport(sessionId: string, report: OpenCutExportReport) {
+      return requestJson<OpenCutExportQaResponse>(
+        fetcher,
+        `${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/qa/opencut-export`,
+        {
+          method: 'POST',
+          body: JSON.stringify(report),
+        }
       )
     },
   }

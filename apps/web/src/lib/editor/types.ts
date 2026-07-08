@@ -70,3 +70,28 @@ export type TimelineClip = {
   score: number
   reason: string
 }
+
+export type OpenCutExportReport = {
+  session_id: string
+  renderer: 'opencut'
+  exported_at: string
+  fingerprint: string
+  ok: boolean
+  clips: OpenCutExportReportClip[]
+}
+
+export type OpenCutExportReportClip = {
+  clip_id: string
+  video_file: string
+  duration_sec: number
+  integrated_lufs: number
+  subtitle_evidence_file: string
+  errors: string[]
+}
+
+export type OpenCutExportQaResponse = {
+  session_id: string
+  clip_count: number
+  total_duration_sec: number
+  by_product: Record<string, number>
+}

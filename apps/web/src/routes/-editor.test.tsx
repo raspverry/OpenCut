@@ -62,6 +62,57 @@ describe('EditorPage', () => {
     expect(screen.getByText('ティントの落ちにくさを実演')).toBeTruthy()
   })
 
+  it('creates a sidecar session, ingests source media, then analyzes that session', async () => {
+    const createSession = vi.fn(async () => ({
+      session_id: '20260708-live-sale',
+      path: '/tmp/data/sessions/20260708-live-sale',
+    }))
+    const ingest = vi.fn(async () => ({
+      session_id: '20260708-live-sale',
+      probe: {
+        duration_sec: 3600,
+        width: 1080,
+        height: 1920,
+        orientation: 'vertical' as const,
+      },
+    }))
+    const analyze = vi.fn(async () => analyzedCandidateResponse())
+
+    render(
+      <EditorShell
+        timelineSpec={mockTimelineSpec}
+        sidecarClient={{ createSession, ingest, analyze }}
+      />
+    )
+
+    fireEvent.change(screen.getByLabelText('Session slug'), {
+      target: { value: 'live-sale' },
+    })
+    fireEvent.change(screen.getByLabelText('Source path'), {
+      target: { value: '/Users/hansol/Videos/live-ja.mp4' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Create Session' }))
+
+    await waitFor(() => expect(screen.getByText('20260708-live-sale')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Ingest' }))
+
+    await waitFor(() => expect(screen.getByText('vertical 3600.0s')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze' }))
+
+    await waitFor(() => expect(screen.getByText('p02-c01')).toBeTruthy())
+    expect(createSession).toHaveBeenCalledWith({ slug: 'live-sale' })
+    expect(ingest).toHaveBeenCalledWith('20260708-live-sale', {
+      input_path: '/Users/hansol/Videos/live-ja.mp4',
+      force: true,
+    })
+    expect(analyze).toHaveBeenCalledWith('20260708-live-sale', {
+      provider: 'anthropic',
+      language: 'ja',
+      max_clip_sec: 30,
+      force: true,
+    })
+  })
+
   it('applies an analyzed candidate into timeline lanes', async () => {
     const analyze = vi.fn(async () => analyzedCandidateResponse())
     const getTimelineSpec = vi.fn(async () => ({

@@ -11,7 +11,7 @@ import { CandidateList } from './candidate-list'
 type AiShortsPanelProps = {
   sessionId: string
   clips: TimelineClip[]
-  client?: Pick<SidecarClient, 'analyze'> & Partial<Pick<SidecarClient, 'getTimelineSpec'>>
+  client?: Partial<SidecarClient>
   onApplyTimeline?: (timeline: AppliedTimeline) => void
 }
 
@@ -27,6 +27,11 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
   const [errorMessage, setErrorMessage] = useState('')
 
   async function analyze() {
+    if (!sidecarClient.analyze) {
+      setErrorMessage('sidecar analyze 경로가 없습니다')
+      setStatus('error')
+      return
+    }
     setStatus('loading')
     setErrorMessage('')
     try {
