@@ -1,4 +1,24 @@
+export type AiShortsProvider = "anthropic" | "openai";
 export type AiShortsLanguage = "ja" | "ko";
+export type AiShortsSourceLanguage = AiShortsLanguage | "zh";
+
+export interface AiShortsAnalyzeRequest {
+	provider: AiShortsProvider;
+	source_language: AiShortsSourceLanguage;
+	language: AiShortsLanguage;
+	max_clip_sec: number;
+	max_clips?: number;
+	force: boolean;
+}
+
+export interface AiShortsAnalyzeResponse {
+	session_id: string;
+	provider: AiShortsProvider;
+	source_language: AiShortsSourceLanguage;
+	language: AiShortsLanguage;
+	max_clip_sec: number;
+	clip_count: number;
+}
 
 export interface AiShortsTimelineSpec {
 	session_id: string;

@@ -1,6 +1,39 @@
-import type { AiShortsCaptionCueFile, AiShortsTimelineSpec } from "./types";
+import type {
+	AiShortsAnalyzeRequest,
+	AiShortsAnalyzeResponse,
+	AiShortsCaptionCueFile,
+	AiShortsProvider,
+	AiShortsSourceLanguage,
+	AiShortsTimelineSpec,
+} from "./types";
 
 type Fetcher = typeof fetch;
+
+export async function analyzeAiShortsSession({
+	baseUrl,
+	sessionId,
+	request,
+	fetcher = fetch,
+}: {
+	baseUrl: string;
+	sessionId: string;
+	request: AiShortsAnalyzeRequest;
+	fetcher?: Fetcher;
+}): Promise<AiShortsAnalyzeResponse> {
+	const value = await getJson({
+		url: sidecarUrl({
+			baseUrl,
+			path: `/api/sessions/${encodeURIComponent(sessionId)}/analyze`,
+		}),
+		fetcher,
+		init: {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(request),
+		},
+	});
+	return parseAnalyzeResponse(value);
+}
 
 export async function fetchAiShortsTimelineSpec({
 	baseUrl,
@@ -88,11 +121,13 @@ function sidecarUrl({
 async function getJson({
 	url,
 	fetcher,
+	init,
 }: {
 	url: string;
 	fetcher: Fetcher;
+	init?: RequestInit;
 }): Promise<unknown> {
-	const response = await fetcher(url);
+	const response = await fetcher(url, init);
 	if (!response.ok) {
 		const detail = await readErrorDetail(response);
 		throw new Error(detail || `Sidecar request failed: ${response.status}`);
@@ -110,6 +145,25 @@ async function readErrorDetail(response: Response): Promise<string> {
 		return "";
 	}
 	return "";
+}
+
+function parseAnalyzeResponse(value: unknown): AiShortsAnalyzeResponse {
+	const record = expectRecord({ value: value, name: "analyze response" });
+	const candidates = expectRecord({
+		value: record.candidates,
+		name: "analyze candidates",
+	});
+	return {
+		session_id: expectString({ value: record.session_id, name: "session_id" }),
+		provider: parseProvider(record.provider),
+		source_language: parseSourceLanguage(record.source_language),
+		language: parseLanguage(record.language),
+		max_clip_sec: expectNumber({
+			value: record.max_clip_sec,
+			name: "max_clip_sec",
+		}),
+		clip_count: expectArray({ value: candidates.clips, name: "clips" }).length,
+	};
 }
 
 function parseTimelineSpec(value: unknown): AiShortsTimelineSpec {
@@ -255,6 +309,22 @@ function parseCaptionStyle(value: unknown): AiShortsCaptionCueFile["style"] {
 
 function parseLanguage(value: unknown): "ja" | "ko" {
 	return expectOneOf({ value: value, options: ["ja", "ko"], name: "language" });
+}
+
+function parseSourceLanguage(value: unknown): AiShortsSourceLanguage {
+	return expectOneOf({
+		value: value,
+		options: ["ja", "ko", "zh"],
+		name: "source_language",
+	});
+}
+
+function parseProvider(value: unknown): AiShortsProvider {
+	return expectOneOf({
+		value: value,
+		options: ["anthropic", "openai"],
+		name: "provider",
+	});
 }
 
 function expectRecord({
