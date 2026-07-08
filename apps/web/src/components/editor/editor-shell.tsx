@@ -4,6 +4,7 @@ import type { AppliedTimeline } from '../../lib/editor/apply-timeline-spec'
 import type { TimelineSpec } from '../../lib/editor/types'
 import { createSidecarClient, type SidecarClient } from '../../lib/editor/sidecar-client'
 import { AiShortsPanel } from './panels/ai-shorts-panel'
+import { ExportQaPanel } from './panels/export-qa-panel'
 import { PreviewPlaceholder } from './panels/preview-placeholder'
 import { SourceMediaPanel } from './panels/source-media-panel'
 import { TimelinePlaceholder } from './panels/timeline-placeholder'
@@ -25,7 +26,7 @@ export function EditorShell({ timelineSpec, sidecarClient }: EditorShellProps) {
         <header className="border-b px-5 py-3">
           <h1 className="text-lg font-semibold">OpenCut AI Shorts</h1>
         </header>
-        <div className="grid flex-1 grid-cols-[280px_1fr_320px] grid-rows-[1fr_220px] gap-px bg-border">
+        <div className="grid flex-1 grid-cols-[280px_1fr_320px] grid-rows-[1fr_160px_220px] gap-px bg-border">
           <SourceMediaPanel
             client={client}
             sessionId={sessionId}
@@ -40,6 +41,7 @@ export function EditorShell({ timelineSpec, sidecarClient }: EditorShellProps) {
             client={client}
             onApplyTimeline={setAppliedTimeline}
           />
+          <ExportQaPanel sessionId={sessionId} timeline={appliedTimeline} client={client} />
           <TimelinePlaceholder clips={timelineSpec.clips} appliedTimeline={appliedTimeline} />
         </div>
       </section>

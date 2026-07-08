@@ -149,6 +149,105 @@ describe('EditorPage', () => {
     expect(screen.getByText('p02-c01-captions')).toBeTruthy()
     expect(getTimelineSpec).toHaveBeenCalledWith('20260708-opencut-fixture')
   })
+
+  it('builds an OpenCut export report from applied timeline and submits QA', async () => {
+    const analyze = vi.fn(async () => analyzedCandidateResponse())
+    const getTimelineSpec = vi.fn(async () => ({
+      ...mockTimelineSpec,
+      clips: [
+        {
+          clip_id: 'p02-c01',
+          product_id: 'p02',
+          source_range_sec: [32, 58],
+          timeline_start_sec: 0,
+          hook_text: 'この落ち方見て',
+          caption_file: 'caption_cues/p02-c01.json',
+          caption_style: 'ja-shorts-safe-v1',
+          score: 94,
+          reason: '価格、実演、使用感が連続している',
+        },
+      ],
+    }))
+    const verifyOpenCutExport = vi.fn(async () => ({
+      session_id: '20260708-opencut-fixture',
+      clip_count: 1,
+      total_duration_sec: 26,
+      by_product: { p02: 1 },
+    }))
+    render(
+      <EditorShell
+        timelineSpec={mockTimelineSpec}
+        sidecarClient={{ analyze, getTimelineSpec, verifyOpenCutExport }}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze' }))
+    await waitFor(() => expect(screen.getByText('p02-c01')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Apply p02-c01' }))
+    await waitFor(() => expect(screen.getByText('p02-c01-video')).toBeTruthy())
+    fireEvent.change(screen.getByLabelText('Integrated LUFS'), {
+      target: { value: '-14.2' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Run Export QA' }))
+
+    await waitFor(() => expect(screen.getByText('QA passed: 1 clip, 26.0s')).toBeTruthy())
+    expect(verifyOpenCutExport).toHaveBeenCalledWith('20260708-opencut-fixture', {
+      session_id: '20260708-opencut-fixture',
+      renderer: 'opencut',
+      exported_at: expect.any(String),
+      fingerprint: mockTimelineSpec.fingerprint,
+      ok: true,
+      clips: [
+        {
+          clip_id: 'p02-c01',
+          video_file: 'final/p02-c01.mp4',
+          duration_sec: 26,
+          integrated_lufs: -14.2,
+          subtitle_evidence_file: 'qa/opencut-subtitles/p02-c01.jpg',
+          errors: [],
+        },
+      ],
+    })
+  })
+
+  it('blocks export QA submission when renderer metadata is invalid', async () => {
+    const analyze = vi.fn(async () => analyzedCandidateResponse())
+    const getTimelineSpec = vi.fn(async () => ({
+      ...mockTimelineSpec,
+      clips: [
+        {
+          clip_id: 'p02-c01',
+          product_id: 'p02',
+          source_range_sec: [32, 58],
+          timeline_start_sec: 0,
+          hook_text: 'この落ち方見て',
+          caption_file: 'caption_cues/p02-c01.json',
+          caption_style: 'ja-shorts-safe-v1',
+          score: 94,
+          reason: '価格、実演、使用感が連続している',
+        },
+      ],
+    }))
+    const verifyOpenCutExport = vi.fn()
+    render(
+      <EditorShell
+        timelineSpec={mockTimelineSpec}
+        sidecarClient={{ analyze, getTimelineSpec, verifyOpenCutExport }}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze' }))
+    await waitFor(() => expect(screen.getByText('p02-c01')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Apply p02-c01' }))
+    await waitFor(() => expect(screen.getByText('p02-c01-video')).toBeTruthy())
+    fireEvent.change(screen.getByLabelText('Integrated LUFS'), {
+      target: { value: 'bad-lufs' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Run Export QA' }))
+
+    await waitFor(() => expect(screen.getByText('integrated LUFS is invalid')).toBeTruthy())
+    expect(verifyOpenCutExport).not.toHaveBeenCalled()
+  })
 })
 
 function analyzedCandidateResponse() {
