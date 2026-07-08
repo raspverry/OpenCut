@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { renderToString } from 'react-dom/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { AnalyzeResponse } from '../../../lib/editor/types'
@@ -56,6 +57,12 @@ describe('AiShortsPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Analyze' }))
 
     await waitFor(() => expect(screen.getByText('하이라이트 후보 파일이 없습니다')).toBeTruthy())
+  })
+
+  it('server renders without falling back to client rendering', () => {
+    expect(() =>
+      renderToString(<AiShortsPanel sessionId="20260708-sale" clips={[]} client={idleClient()} />)
+    ).not.toThrow()
   })
 })
 

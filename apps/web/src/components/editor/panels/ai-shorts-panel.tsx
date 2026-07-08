@@ -3,7 +3,6 @@ import { useMemo, useState } from 'react'
 import type { CandidateClip, TimelineClip } from '../../../lib/editor/types'
 import { createSidecarClient, type SidecarClient } from '../../../lib/editor/sidecar-client'
 import type { LanguageCode, SidecarProvider } from '../../../lib/editor/types'
-import { Button } from '../../ui/button'
 import { NativeSelect, NativeSelectOption } from '../../ui/native-select'
 import { CandidateList } from './candidate-list'
 
@@ -85,7 +84,14 @@ export function AiShortsPanel({ sessionId, clips, client }: AiShortsPanelProps) 
         </label>
       </div>
       <div className="mt-3 flex items-center justify-between gap-3">
-        <Button onClick={analyze} disabled={status === 'loading'}>Analyze</Button>
+        <button
+          type="button"
+          onClick={analyze}
+          disabled={status === 'loading'}
+          className="inline-flex h-7 shrink-0 items-center justify-center rounded-md bg-primary px-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/80 disabled:pointer-events-none disabled:opacity-50"
+        >
+          Analyze
+        </button>
         <p
           role={status === 'error' ? 'alert' : 'status'}
           className="truncate text-xs text-muted-foreground"
