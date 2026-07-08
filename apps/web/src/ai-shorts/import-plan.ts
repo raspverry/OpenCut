@@ -5,6 +5,7 @@ import type { SubtitleCue, SubtitleStyleOverrides } from "@/subtitles/types";
 import { mediaTimeFromSeconds } from "@/wasm";
 import type {
 	AiShortsCaptionCueFile,
+	AiShortsImportBundle,
 	AiShortsTimelineClip,
 	AiShortsTimelineSpec,
 } from "./types";
@@ -69,6 +70,36 @@ export function buildAiShortsImportPlan({
 		canvasSize,
 		videoElements,
 		captions,
+	};
+}
+
+export function buildSingleClipAiShortsImportBundle({
+	bundle,
+	clipId,
+}: {
+	bundle: AiShortsImportBundle;
+	clipId: string;
+}): AiShortsImportBundle {
+	const clip = bundle.spec.clips.find((item) => item.clip_id === clipId);
+	if (!clip) {
+		throw new Error(`Missing timeline clip for ${clipId}`);
+	}
+	const captionFile = bundle.captionsByClipId.get(clipId);
+	if (!captionFile) {
+		throw new Error(`Missing caption cues for ${clipId}`);
+	}
+
+	return {
+		spec: {
+			...bundle.spec,
+			clips: [
+				{
+					...clip,
+					timeline_start_sec: 0,
+				},
+			],
+		},
+		captionsByClipId: new Map([[clipId, captionFile]]),
 	};
 }
 

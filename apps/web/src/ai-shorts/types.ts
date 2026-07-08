@@ -75,3 +75,39 @@ export interface AiShortsCaptionCue {
 		confidence: number | null;
 	}>;
 }
+
+export interface AiShortsImportBundle {
+	spec: AiShortsTimelineSpec;
+	captionsByClipId: Map<string, AiShortsCaptionCueFile>;
+}
+
+export interface AiShortsOpenCutExportArtifact {
+	session_id: string;
+	clip_id: string;
+	video_file: string;
+	byte_size: number;
+}
+
+export interface AiShortsOpenCutExportManifestClip {
+	clip_id: string;
+	video_file: string;
+}
+
+export interface AiShortsOpenCutExportManifest {
+	session_id: string;
+	exported_at: string;
+	fingerprint: string;
+	clips: AiShortsOpenCutExportManifestClip[];
+}
+
+export interface AiShortsOpenCutExportManifestDraft {
+	manifest: AiShortsOpenCutExportManifest;
+	missing_files: string[];
+}
+
+export interface AiShortsOpenCutExportQaResponse {
+	session_id: string;
+	clip_count: number;
+	total_duration_sec: number;
+	by_product: Record<string, number>;
+}

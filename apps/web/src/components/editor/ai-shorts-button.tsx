@@ -1,18 +1,32 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Sparkles } from "lucide-react";
+import {
+	CheckCircle2,
+	Download,
+	ListVideo,
+	Sparkles,
+	Upload,
+} from "lucide-react";
 import { toast } from "sonner";
-import { buildAiShortsImportPlan } from "@/ai-shorts/import-plan";
+import {
+	buildAiShortsImportPlan,
+	buildSingleClipAiShortsImportBundle,
+} from "@/ai-shorts/import-plan";
 import { importAiShortsIntoEditor } from "@/ai-shorts/import-into-editor";
 import {
 	analyzeAiShortsSession,
+	draftAiShortsOpenCutExportManifest,
 	fetchAiShortsImportBundle,
+	fetchAiShortsTimelineSpec,
+	uploadAiShortsOpenCutExportArtifact,
+	verifyAiShortsOpenCutExportManifest,
 } from "@/ai-shorts/sidecar-client";
 import type {
 	AiShortsLanguage,
 	AiShortsProvider,
 	AiShortsSourceLanguage,
+	AiShortsTimelineClip,
 } from "@/ai-shorts/types";
 import { useEditor } from "@/editor/use-editor";
 import { Button } from "@/components/ui/button";
@@ -42,6 +56,22 @@ function outputLanguageFromValue(value: string): AiShortsLanguage {
 	return value === "ko" ? "ko" : "ja";
 }
 
+function formatBytes(bytes: number): string {
+	if (bytes < 1024) {
+		return `${bytes} B`;
+	}
+	if (bytes < 1024 * 1024) {
+		return `${Math.round(bytes / 1024)} KB`;
+	}
+	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function clipLabel(clip: AiShortsTimelineClip): string {
+	const [startSec, endSec] = clip.source_range_sec;
+	const durationSec = Math.max(endSec - startSec, 0);
+	return `${clip.clip_id} ${durationSec.toFixed(1)}s - ${clip.hook_text}`;
+}
+
 export function AiShortsButton() {
 	const editor = useEditor();
 	const videoAssets = useEditor((e) =>
@@ -57,11 +87,20 @@ export function AiShortsButton() {
 	const [outputLanguage, setOutputLanguage] = useState<AiShortsLanguage>("ja");
 	const [maxClips, setMaxClips] = useState("12");
 	const [forceAnalyze, setForceAnalyze] = useState(false);
+	const [timelineClips, setTimelineClips] = useState<AiShortsTimelineClip[]>(
+		[],
+	);
+	const [selectedClipId, setSelectedClipId] = useState("");
 	const [status, setStatus] = useState("Ready");
 	const [isAnalyzing, setIsAnalyzing] = useState(false);
+	const [isLoadingClips, setIsLoadingClips] = useState(false);
 	const [isImporting, setIsImporting] = useState(false);
-	const isBusy = isAnalyzing || isImporting;
+	const [isExporting, setIsExporting] = useState(false);
+	const [isVerifying, setIsVerifying] = useState(false);
+	const isBusy =
+		isAnalyzing || isLoadingClips || isImporting || isExporting || isVerifying;
 	const selectedSourceAssetId = sourceAssetId || videoAssets[0]?.id || "";
+	const activeClipId = selectedClipId || timelineClips[0]?.clip_id || "";
 	const sourceAsset = useMemo(
 		() =>
 			videoAssets.find((asset) => asset.id === selectedSourceAssetId) ?? null,
@@ -72,6 +111,14 @@ export function AiShortsButton() {
 		const trimmed = sessionId.trim();
 		if (!trimmed) {
 			setStatus("Session ID is required");
+		}
+		return trimmed || null;
+	}
+
+	function requireClipId(): string | null {
+		const trimmed = activeClipId.trim();
+		if (!trimmed) {
+			setStatus("Load and select a clip first");
 		}
 		return trimmed || null;
 	}
@@ -88,27 +135,58 @@ export function AiShortsButton() {
 		return value;
 	}
 
-	async function importTimeline(session: string) {
+	function setLoadedClips(clips: AiShortsTimelineClip[]) {
+		setTimelineClips(clips);
+		setSelectedClipId((current) => {
+			if (current && clips.some((clip) => clip.clip_id === current)) {
+				return current;
+			}
+			return clips[0]?.clip_id ?? "";
+		});
+	}
+
+	async function loadTimelineClips(session: string): Promise<number> {
+		const spec = await fetchAiShortsTimelineSpec({
+			baseUrl: baseUrl.trim(),
+			sessionId: session,
+		});
+		setLoadedClips(spec.clips);
+		return spec.clips.length;
+	}
+
+	async function importTimeline({
+		session,
+		clipId,
+	}: {
+		session: string;
+		clipId?: string;
+	}) {
 		if (!sourceAsset) {
 			setStatus("Import the source video first");
 			return;
 		}
 
 		setIsImporting(true);
-		setStatus("Loading sidecar timeline...");
+		setStatus(clipId ? `Importing ${clipId}...` : "Importing timeline...");
 		try {
 			const bundle = await fetchAiShortsImportBundle({
 				baseUrl: baseUrl.trim(),
 				sessionId: session,
 			});
+			setLoadedClips(bundle.spec.clips);
+			const importBundle = clipId
+				? buildSingleClipAiShortsImportBundle({ bundle, clipId })
+				: bundle;
 			const plan = buildAiShortsImportPlan({
-				spec: bundle.spec,
-				captionsByClipId: bundle.captionsByClipId,
+				spec: importBundle.spec,
+				captionsByClipId: importBundle.captionsByClipId,
 				sourceAsset,
 			});
 			const result = await importAiShortsIntoEditor({ editor, plan });
 			setStatus(
-				`Imported ${result.clipCount} clips, ${result.captionCount} captions`,
+				clipId
+					? `Imported ${clipId}, ${result.captionCount} captions`
+					: `Imported ${result.clipCount} clips, ${result.captionCount} captions`,
 			);
 			toast.success("AI Shorts imported");
 		} catch (error) {
@@ -118,6 +196,27 @@ export function AiShortsButton() {
 			toast.error("AI Shorts import failed", { description: message });
 		} finally {
 			setIsImporting(false);
+		}
+	}
+
+	async function handleLoadClips() {
+		const session = requireSessionId();
+		if (!session) {
+			return;
+		}
+
+		setIsLoadingClips(true);
+		setStatus("Loading sidecar clips...");
+		try {
+			const count = await loadTimelineClips(session);
+			setStatus(`Loaded ${count} clips`);
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "AI Shorts clips load failed";
+			setStatus(message);
+			toast.error("AI Shorts clips load failed", { description: message });
+		} finally {
+			setIsLoadingClips(false);
 		}
 	}
 
@@ -142,11 +241,9 @@ export function AiShortsButton() {
 					force: forceAnalyze,
 				},
 			});
-			setStatus(`Analyzed ${response.clip_count} clips`);
+			const loadedCount = await loadTimelineClips(session);
+			setStatus(`Analyzed ${response.clip_count} clips, loaded ${loadedCount}`);
 			toast.success("AI Shorts analyzed");
-			if (sourceAsset) {
-				await importTimeline(session);
-			}
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : "AI Shorts analyze failed";
@@ -157,12 +254,115 @@ export function AiShortsButton() {
 		}
 	}
 
-	async function handleImport() {
+	async function handleImportSelected() {
+		const session = requireSessionId();
+		const clipId = requireClipId();
+		if (!session || !clipId) {
+			return;
+		}
+		await importTimeline({ session, clipId });
+	}
+
+	async function handleImportAll() {
 		const session = requireSessionId();
 		if (!session) {
 			return;
 		}
-		await importTimeline(session);
+		await importTimeline({ session });
+	}
+
+	async function handleExportSelected() {
+		const session = requireSessionId();
+		const clipId = requireClipId();
+		const activeProject = editor.project.getActiveOrNull();
+		if (!session || !clipId) {
+			return;
+		}
+		if (!activeProject) {
+			setStatus("No active project");
+			return;
+		}
+
+		setIsExporting(true);
+		setStatus(`Exporting ${clipId}...`);
+		try {
+			const result = await editor.project.export({
+				options: {
+					format: "mp4",
+					quality: "high",
+					fps: activeProject.settings.fps,
+					includeAudio: true,
+				},
+			});
+			if (result.cancelled) {
+				setStatus("Export cancelled");
+				return;
+			}
+			if (!result.success || !result.buffer) {
+				throw new Error(result.error || "OpenCut export failed");
+			}
+
+			setStatus(`Uploading ${clipId}...`);
+			const artifact = await uploadAiShortsOpenCutExportArtifact({
+				baseUrl: baseUrl.trim(),
+				sessionId: session,
+				clipId,
+				buffer: result.buffer,
+			});
+			setStatus(
+				`Uploaded ${artifact.video_file} (${formatBytes(artifact.byte_size)})`,
+			);
+			toast.success("OpenCut export uploaded", {
+				description: artifact.video_file,
+			});
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "OpenCut export upload failed";
+			setStatus(message);
+			toast.error("OpenCut export upload failed", { description: message });
+		} finally {
+			editor.project.clearExportState();
+			setIsExporting(false);
+		}
+	}
+
+	async function handleVerifySelected() {
+		const session = requireSessionId();
+		const clipId = requireClipId();
+		if (!session || !clipId) {
+			return;
+		}
+
+		setIsVerifying(true);
+		setStatus(`Verifying ${clipId}...`);
+		try {
+			const draft = await draftAiShortsOpenCutExportManifest({
+				baseUrl: baseUrl.trim(),
+				sessionId: session,
+				clipIds: [clipId],
+			});
+			if (draft.missing_files.length > 0) {
+				throw new Error(
+					`Missing export files: ${draft.missing_files.join(", ")}`,
+				);
+			}
+			const qa = await verifyAiShortsOpenCutExportManifest({
+				baseUrl: baseUrl.trim(),
+				sessionId: session,
+				manifest: draft.manifest,
+			});
+			setStatus(
+				`Verified ${qa.clip_count} clip, ${qa.total_duration_sec.toFixed(1)}s`,
+			);
+			toast.success("OpenCut export verified");
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "OpenCut export QA failed";
+			setStatus(message);
+			toast.error("OpenCut export QA failed", { description: message });
+		} finally {
+			setIsVerifying(false);
+		}
 	}
 
 	return (
@@ -207,7 +407,10 @@ export function AiShortsButton() {
 						/>
 					</label>
 					<div className="grid grid-cols-2 gap-2">
-						<label className="grid gap-1.5 text-xs" htmlFor="ai-shorts-provider">
+						<label
+							className="grid gap-1.5 text-xs"
+							htmlFor="ai-shorts-provider"
+						>
 							<span className="text-muted-foreground">Provider</span>
 							<select
 								id="ai-shorts-provider"
@@ -260,7 +463,10 @@ export function AiShortsButton() {
 								<option value="ko">Korean</option>
 							</select>
 						</label>
-						<label className="grid gap-1.5 text-xs" htmlFor="ai-shorts-max-clips">
+						<label
+							className="grid gap-1.5 text-xs"
+							htmlFor="ai-shorts-max-clips"
+						>
 							<span className="text-muted-foreground">Max clips</span>
 							<Input
 								id="ai-shorts-max-clips"
@@ -293,6 +499,24 @@ export function AiShortsButton() {
 							))}
 						</select>
 					</label>
+					<label className="grid gap-1.5 text-xs" htmlFor="ai-shorts-clip">
+						<span className="text-muted-foreground">Clip</span>
+						<select
+							id="ai-shorts-clip"
+							className={SELECT_CLASS}
+							value={activeClipId}
+							onChange={(event) => setSelectedClipId(event.currentTarget.value)}
+						>
+							{timelineClips.length === 0 ? (
+								<option value="">No clips loaded</option>
+							) : null}
+							{timelineClips.map((clip) => (
+								<option key={clip.clip_id} value={clip.clip_id}>
+									{clipLabel(clip)}
+								</option>
+							))}
+						</select>
+					</label>
 					<label className="flex items-center gap-2 text-xs">
 						<input
 							type="checkbox"
@@ -301,7 +525,7 @@ export function AiShortsButton() {
 						/>
 						<span className="text-muted-foreground">Force re-analyze</span>
 					</label>
-					<div className="flex items-center gap-2">
+					<div className="grid grid-cols-2 gap-2">
 						<Button
 							size="sm"
 							className="gap-1.5"
@@ -316,15 +540,55 @@ export function AiShortsButton() {
 							variant="secondary"
 							className="gap-1.5"
 							disabled={isBusy}
-							onClick={handleImport}
+							onClick={handleLoadClips}
 						>
-							<Sparkles className="size-3.5" />
-							{isImporting ? "Importing..." : "Import Timeline"}
+							<ListVideo className="size-3.5" />
+							{isLoadingClips ? "Loading..." : "Load Clips"}
 						</Button>
-						<p className="text-muted-foreground min-w-0 truncate text-xs">
-							{status}
-						</p>
+						<Button
+							size="sm"
+							variant="secondary"
+							className="gap-1.5"
+							disabled={isBusy}
+							onClick={handleImportSelected}
+						>
+							<Download className="size-3.5" />
+							{isImporting ? "Importing..." : "Import Selected"}
+						</Button>
+						<Button
+							size="sm"
+							variant="secondary"
+							className="gap-1.5"
+							disabled={isBusy}
+							onClick={handleImportAll}
+						>
+							<Download className="size-3.5" />
+							Import All
+						</Button>
+						<Button
+							size="sm"
+							variant="secondary"
+							className="gap-1.5"
+							disabled={isBusy}
+							onClick={handleExportSelected}
+						>
+							<Upload className="size-3.5" />
+							{isExporting ? "Exporting..." : "Export Selected"}
+						</Button>
+						<Button
+							size="sm"
+							variant="secondary"
+							className="gap-1.5"
+							disabled={isBusy}
+							onClick={handleVerifySelected}
+						>
+							<CheckCircle2 className="size-3.5" />
+							{isVerifying ? "Verifying..." : "Verify Selected"}
+						</Button>
 					</div>
+					<p className="text-muted-foreground min-w-0 truncate text-xs">
+						{status}
+					</p>
 				</div>
 			</PopoverContent>
 		</Popover>

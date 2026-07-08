@@ -2,6 +2,11 @@ import type {
 	AiShortsAnalyzeRequest,
 	AiShortsAnalyzeResponse,
 	AiShortsCaptionCueFile,
+	AiShortsImportBundle,
+	AiShortsOpenCutExportArtifact,
+	AiShortsOpenCutExportManifest,
+	AiShortsOpenCutExportManifestDraft,
+	AiShortsOpenCutExportQaResponse,
 	AiShortsProvider,
 	AiShortsSourceLanguage,
 	AiShortsTimelineSpec,
@@ -83,10 +88,7 @@ export async function fetchAiShortsImportBundle({
 	baseUrl: string;
 	sessionId: string;
 	fetcher?: Fetcher;
-}): Promise<{
-	spec: AiShortsTimelineSpec;
-	captionsByClipId: Map<string, AiShortsCaptionCueFile>;
-}> {
+}): Promise<AiShortsImportBundle> {
 	const spec = await fetchAiShortsTimelineSpec({ baseUrl, sessionId, fetcher });
 	const captionFiles = await Promise.all(
 		spec.clips.map((clip) =>
@@ -104,6 +106,86 @@ export async function fetchAiShortsImportBundle({
 			captionFiles.map((cueFile) => [cueFile.clip_id, cueFile]),
 		),
 	};
+}
+
+export async function uploadAiShortsOpenCutExportArtifact({
+	baseUrl,
+	sessionId,
+	clipId,
+	buffer,
+	fetcher = fetch,
+}: {
+	baseUrl: string;
+	sessionId: string;
+	clipId: string;
+	buffer: ArrayBuffer;
+	fetcher?: Fetcher;
+}): Promise<AiShortsOpenCutExportArtifact> {
+	const value = await getJson({
+		url: sidecarUrl({
+			baseUrl,
+			path: `/api/sessions/${encodeURIComponent(sessionId)}/qa/opencut-export/artifacts/${encodeURIComponent(clipId)}`,
+		}),
+		fetcher,
+		init: {
+			method: "POST",
+			headers: { "Content-Type": "video/mp4" },
+			body: new Blob([buffer], { type: "video/mp4" }),
+		},
+	});
+	return parseOpenCutExportArtifact(value);
+}
+
+export async function draftAiShortsOpenCutExportManifest({
+	baseUrl,
+	sessionId,
+	clipIds,
+	fetcher = fetch,
+}: {
+	baseUrl: string;
+	sessionId: string;
+	clipIds: string[];
+	fetcher?: Fetcher;
+}): Promise<AiShortsOpenCutExportManifestDraft> {
+	const value = await getJson({
+		url: sidecarUrl({
+			baseUrl,
+			path: `/api/sessions/${encodeURIComponent(sessionId)}/qa/opencut-export/manifest/draft`,
+		}),
+		fetcher,
+		init: {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ clip_ids: clipIds }),
+		},
+	});
+	return parseOpenCutExportManifestDraft(value);
+}
+
+export async function verifyAiShortsOpenCutExportManifest({
+	baseUrl,
+	sessionId,
+	manifest,
+	fetcher = fetch,
+}: {
+	baseUrl: string;
+	sessionId: string;
+	manifest: AiShortsOpenCutExportManifest;
+	fetcher?: Fetcher;
+}): Promise<AiShortsOpenCutExportQaResponse> {
+	const value = await getJson({
+		url: sidecarUrl({
+			baseUrl,
+			path: `/api/sessions/${encodeURIComponent(sessionId)}/qa/opencut-export/manifest`,
+		}),
+		fetcher,
+		init: {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(manifest),
+		},
+	});
+	return parseOpenCutExportQaResponse(value);
 }
 
 function sidecarUrl({
@@ -231,6 +313,89 @@ function parseCaptionCueFile(value: unknown): AiShortsCaptionCueFile {
 			parseCaptionCue,
 		),
 		style: parseCaptionStyle(record.style),
+	};
+}
+
+function parseOpenCutExportArtifact(
+	value: unknown,
+): AiShortsOpenCutExportArtifact {
+	const record = expectRecord({
+		value: value,
+		name: "OpenCut export artifact",
+	});
+	return {
+		session_id: expectString({ value: record.session_id, name: "session_id" }),
+		clip_id: expectString({ value: record.clip_id, name: "clip_id" }),
+		video_file: expectString({ value: record.video_file, name: "video_file" }),
+		byte_size: expectNumber({ value: record.byte_size, name: "byte_size" }),
+	};
+}
+
+function parseOpenCutExportManifestDraft(
+	value: unknown,
+): AiShortsOpenCutExportManifestDraft {
+	const record = expectRecord({
+		value: value,
+		name: "OpenCut export manifest draft",
+	});
+	return {
+		manifest: parseOpenCutExportManifest(record.manifest),
+		missing_files: expectArray({
+			value: record.missing_files,
+			name: "missing_files",
+		}).map((item) => expectString({ value: item, name: "missing_files" })),
+	};
+}
+
+function parseOpenCutExportManifest(
+	value: unknown,
+): AiShortsOpenCutExportManifest {
+	const record = expectRecord({
+		value: value,
+		name: "OpenCut export manifest",
+	});
+	return {
+		session_id: expectString({ value: record.session_id, name: "session_id" }),
+		exported_at: expectString({
+			value: record.exported_at,
+			name: "exported_at",
+		}),
+		fingerprint: expectString({
+			value: record.fingerprint,
+			name: "fingerprint",
+		}),
+		clips: expectArray({ value: record.clips, name: "clips" }).map(
+			parseOpenCutExportManifestClip,
+		),
+	};
+}
+
+function parseOpenCutExportManifestClip(value: unknown) {
+	const record = expectRecord({
+		value: value,
+		name: "OpenCut export manifest clip",
+	});
+	return {
+		clip_id: expectString({ value: record.clip_id, name: "clip_id" }),
+		video_file: expectString({ value: record.video_file, name: "video_file" }),
+	};
+}
+
+function parseOpenCutExportQaResponse(
+	value: unknown,
+): AiShortsOpenCutExportQaResponse {
+	const record = expectRecord({
+		value: value,
+		name: "OpenCut export QA response",
+	});
+	return {
+		session_id: expectString({ value: record.session_id, name: "session_id" }),
+		clip_count: expectNumber({ value: record.clip_count, name: "clip_count" }),
+		total_duration_sec: expectNumber({
+			value: record.total_duration_sec,
+			name: "total_duration_sec",
+		}),
+		by_product: parseNumberRecord(record.by_product),
 	};
 }
 
@@ -381,6 +546,16 @@ function expectNumber({
 		throw new Error(`Invalid sidecar ${name}`);
 	}
 	return value;
+}
+
+function parseNumberRecord(value: unknown): Record<string, number> {
+	const record = expectRecord({ value: value, name: "number record" });
+	return Object.fromEntries(
+		Object.entries(record).map(([key, item]) => [
+			key,
+			expectNumber({ value: item, name: key }),
+		]),
+	);
 }
 
 function expectNumberTuple({

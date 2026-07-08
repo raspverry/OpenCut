@@ -12,8 +12,11 @@ mock.module("opencut-wasm", () => ({
 	snappedSeekTime: ({ time }: { time: number }) => Math.round(time),
 }));
 
-const { AI_SHORTS_CANVAS_SIZE, buildAiShortsImportPlan } =
-	await import("../import-plan");
+const {
+	AI_SHORTS_CANVAS_SIZE,
+	buildAiShortsImportPlan,
+	buildSingleClipAiShortsImportBundle,
+} = await import("../import-plan");
 
 function toTicks(seconds: number): number {
 	return Math.round(seconds * 1000);
@@ -198,5 +201,39 @@ describe("buildAiShortsImportPlan", () => {
 				captionsByClipId: new Map(),
 			}),
 		).toThrow("Missing caption cues for p01-c01");
+	});
+
+	it("scopes an import bundle to one selected clip at timeline zero", () => {
+		const p01Caption = captionFile({
+			clipId: "p01-c01",
+			sourceRange: [10, 28],
+			text: "このツヤ見て",
+			startSec: 10,
+			endSec: 12,
+		});
+		const p02Caption = captionFile({
+			clipId: "p02-c01",
+			sourceRange: [54.1, 74.86],
+			text: "泡クリーム、手にも",
+			startSec: 60.8,
+			endSec: 66.8,
+		});
+
+		const scoped = buildSingleClipAiShortsImportBundle({
+			bundle: {
+				spec,
+				captionsByClipId: new Map([
+					["p01-c01", p01Caption],
+					["p02-c01", p02Caption],
+				]),
+			},
+			clipId: "p02-c01",
+		});
+
+		expect(scoped.spec.clips).toHaveLength(1);
+		expect(scoped.spec.clips[0].clip_id).toBe("p02-c01");
+		expect(scoped.spec.clips[0].timeline_start_sec).toBe(0);
+		expect([...scoped.captionsByClipId.keys()]).toEqual(["p02-c01"]);
+		expect(scoped.captionsByClipId.get("p02-c01")).toBe(p02Caption);
 	});
 });
