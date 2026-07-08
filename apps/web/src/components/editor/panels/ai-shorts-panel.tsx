@@ -19,7 +19,7 @@ const MAX_CLIP_SEC = 30
 
 export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiShortsPanelProps) {
   const sidecarClient = useMemo(() => client ?? createSidecarClient(), [client])
-  const [provider, setProvider] = useState<SidecarProvider>('anthropic')
+  const [provider, setProvider] = useState<SidecarProvider>('openai')
   const [sourceLanguage, setSourceLanguage] = useState<SourceLanguageCode>('ja')
   const [language, setLanguage] = useState<LanguageCode>('ja')
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
@@ -70,7 +70,12 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
       onApplyTimeline(
         applyTimelineSpec({
           ...spec,
-          clips: spec.clips.filter((clip) => clip.clip_id === clipId),
+          clips: spec.clips
+            .filter((clip) => clip.clip_id === clipId)
+            .map((clip) => ({
+              ...clip,
+              timeline_start_sec: 0,
+            })),
         })
       )
       setCandidateCount(1)

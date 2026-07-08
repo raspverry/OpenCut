@@ -107,7 +107,7 @@ describe('EditorPage', () => {
       force: true,
     })
     expect(analyze).toHaveBeenCalledWith('20260708-live-sale', {
-      provider: 'anthropic',
+      provider: 'openai',
       source_language: 'ja',
       language: 'ja',
       max_clip_sec: 30,

@@ -11,10 +11,10 @@ import { AiShortsPanel } from './ai-shorts-panel'
 describe('AiShortsPanel', () => {
   afterEach(() => cleanup())
 
-  it('defaults to Japanese, Anthropic, and 30 second max clips', () => {
+  it('defaults to Japanese, OpenAI, and 30 second max clips', () => {
     render(<AiShortsPanel sessionId="20260708-sale" clips={[]} client={idleClient()} />)
 
-    expect((screen.getByLabelText('Provider') as HTMLSelectElement).value).toBe('anthropic')
+    expect((screen.getByLabelText('Provider') as HTMLSelectElement).value).toBe('openai')
     expect((screen.getByLabelText('Source Language') as HTMLSelectElement).value).toBe('ja')
     expect((screen.getByLabelText('Caption Language') as HTMLSelectElement).value).toBe('ja')
     expect(screen.getByText('Max 30s')).toBeTruthy()
@@ -69,20 +69,32 @@ describe('AiShortsPanel', () => {
     expect(screen.getByText('Run Analyze to generate candidates')).toBeTruthy()
   })
 
-  it('shows a timeline applied state after applying a clip', async () => {
-    const getTimelineSpec = vi.fn(async () => mockTimelineSpec)
+  it('rebases one applied clip to timeline zero', async () => {
+    const onApplyTimeline = vi.fn()
+    const getTimelineSpec = vi.fn(async () => ({
+      ...mockTimelineSpec,
+      clips: [
+        {
+          ...mockTimelineSpec.clips[0],
+          timeline_start_sec: 42,
+        },
+      ],
+    }))
     render(
       <AiShortsPanel
         sessionId="20260708-sale"
         clips={[mockTimelineSpec.clips[0]]}
         client={{ getTimelineSpec }}
-        onApplyTimeline={vi.fn()}
+        onApplyTimeline={onApplyTimeline}
       />
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Apply p01-c01' }))
 
     await waitFor(() => expect(screen.getByText('Applied 1 clip to timeline')).toBeTruthy())
+    expect(onApplyTimeline).toHaveBeenCalled()
+    const timeline = onApplyTimeline.mock.calls[0]?.[0]
+    expect(timeline.elements.find((element) => element.type === 'video')?.timelineStartSec).toBe(0)
   })
 
   it('server renders without falling back to client rendering', () => {
