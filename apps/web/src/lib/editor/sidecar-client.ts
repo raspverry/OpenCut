@@ -12,6 +12,8 @@ const DEFAULT_BASE_URL = 'http://127.0.0.1:8789'
 
 type Fetcher = (input: string | URL | Request, init?: RequestInit) => Promise<Response>
 
+export type SidecarClient = ReturnType<typeof createSidecarClient>
+
 export type CreateSessionRequest = {
   slug: string
 }

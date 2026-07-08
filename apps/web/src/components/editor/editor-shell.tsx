@@ -18,7 +18,7 @@ export function EditorShell({ timelineSpec }: EditorShellProps) {
         <div className="grid flex-1 grid-cols-[280px_1fr_320px] grid-rows-[1fr_220px] gap-px bg-border">
           <SourceMediaPanel timelineSpec={timelineSpec} />
           <PreviewPlaceholder />
-          <AiShortsPanel clips={timelineSpec.clips} />
+          <AiShortsPanel sessionId={timelineSpec.session_id} clips={timelineSpec.clips} />
           <TimelinePlaceholder clips={timelineSpec.clips} />
         </div>
       </section>
