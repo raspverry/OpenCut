@@ -176,6 +176,36 @@ describe('createSidecarClient', () => {
     expect(calls[0][1]?.body).toBe(JSON.stringify(manifest))
   })
 
+  it('requests OpenCut export manifest drafts for applied clips', async () => {
+    const calls: Array<[string, RequestInit | undefined]> = []
+    const request = {
+      clip_ids: ['p01-c01'],
+    }
+    const draft = {
+      manifest: {
+        session_id: '20260708-sale',
+        exported_at: '2026-07-08T12:05:00+09:00',
+        fingerprint: 'sha256:1111111111111111111111111111111111111111111111111111111111111111',
+        clips: [{ clip_id: 'p01-c01', video_file: 'final/p01-c01.mp4' }],
+      },
+      missing_files: [],
+    }
+    const fetcher = async (input: string | URL | Request, init?: RequestInit) => {
+      calls.push([String(input), init])
+      return jsonResponse(draft)
+    }
+    const client = createSidecarClient({ fetcher })
+
+    const response = await client.draftOpenCutExportManifest('20260708-sale', request)
+
+    expect(response).toEqual(draft)
+    expect(calls[0][0]).toBe(
+      'http://127.0.0.1:8789/api/sessions/20260708-sale/qa/opencut-export/manifest/draft'
+    )
+    expect(calls[0][1]?.method).toBe('POST')
+    expect(calls[0][1]?.body).toBe(JSON.stringify(request))
+  })
+
   it('throws Korean sidecar error detail when the API fails', async () => {
     const fetcher = async () => jsonResponse({ detail: '하이라이트 후보 파일이 없습니다' }, 404)
     const client = createSidecarClient({ fetcher })

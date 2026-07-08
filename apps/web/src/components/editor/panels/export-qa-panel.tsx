@@ -8,7 +8,9 @@ import type { SidecarClient } from '../../../lib/editor/sidecar-client'
 type ExportQaPanelProps = {
   sessionId: string
   timeline: AppliedTimeline | null
-  client?: Partial<Pick<SidecarClient, 'verifyOpenCutExportManifest'>>
+  client?: Partial<
+    Pick<SidecarClient, 'draftOpenCutExportManifest' | 'verifyOpenCutExportManifest'>
+  >
 }
 
 type ClipExportMetadata = {
@@ -28,6 +30,8 @@ export function ExportQaPanel({ sessionId, timeline, client }: ExportQaPanelProp
   const [status, setStatus] = useState('Export QA ready')
   const [statusKind, setStatusKind] = useState<'info' | 'error'>('info')
   const [isRunning, setIsRunning] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const isBusy = isRunning || isRefreshing
 
   useEffect(() => {
     setOutputs((current) =>
@@ -90,9 +94,64 @@ export function ExportQaPanel({ sessionId, timeline, client }: ExportQaPanelProp
     }
   }
 
+  async function refreshExports() {
+    if (!timeline) {
+      setStatus('timeline 적용 후 export 경로를 새로고침하세요')
+      setStatusKind('error')
+      return
+    }
+    if (!client?.draftOpenCutExportManifest) {
+      setStatus('sidecar export manifest 경로가 없습니다')
+      setStatusKind('error')
+      return
+    }
+    if (clipIds.length === 0) {
+      setStatus('새로고침할 클립이 없습니다')
+      setStatusKind('error')
+      return
+    }
+    setIsRefreshing(true)
+    setStatus('Refreshing export paths...')
+    setStatusKind('info')
+    try {
+      const draft = await client.draftOpenCutExportManifest(sessionId, {
+        clip_ids: clipIds,
+      })
+      const pathsByClip = new Map(
+        draft.manifest.clips.map((clip) => [clip.clip_id, clip.video_file])
+      )
+      setOutputs((current) =>
+        Object.fromEntries(
+          clipIds.map((clipId) => [
+            clipId,
+            {
+              videoFile:
+                pathsByClip.get(clipId) ??
+                current[clipId]?.videoFile ??
+                defaultOutput(clipId).videoFile,
+            },
+          ])
+        )
+      )
+      if (draft.missing_files.length > 0) {
+        setStatus(`Missing export files: ${draft.missing_files.join(', ')}`)
+        setStatusKind('error')
+        return
+      }
+      const clipLabel = draft.manifest.clips.length === 1 ? 'clip' : 'clips'
+      setStatus(`Export paths refreshed: ${draft.manifest.clips.length} ${clipLabel}`)
+      setStatusKind('info')
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'OpenCut export 경로 새로고침 실패')
+      setStatusKind('error')
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
   return (
     <section
-      aria-busy={isRunning}
+      aria-busy={isBusy}
       aria-label="Export QA"
       className="col-span-3 bg-background px-5 py-4"
     >
@@ -151,9 +210,18 @@ export function ExportQaPanel({ sessionId, timeline, client }: ExportQaPanelProp
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <button
           type="button"
+          className="inline-flex h-8 items-center gap-1.5 rounded-md border bg-background px-3 text-xs font-medium shadow-sm shadow-black/5 transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-55"
+          onClick={refreshExports}
+          disabled={isBusy}
+        >
+          {isRefreshing ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : null}
+          Refresh Exports
+        </button>
+        <button
+          type="button"
           className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/85 disabled:pointer-events-none disabled:opacity-55"
           onClick={runQa}
-          disabled={isRunning}
+          disabled={isBusy}
         >
           {isRunning ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : null}
           Run Export QA

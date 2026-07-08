@@ -101,6 +101,15 @@ export type OpenCutExportManifestClip = {
   video_file: string
 }
 
+export type OpenCutExportManifestDraftRequest = {
+  clip_ids: string[]
+}
+
+export type OpenCutExportManifestDraft = {
+  manifest: OpenCutExportManifest
+  missing_files: string[]
+}
+
 export type OpenCutExportQaResponse = {
   session_id: string
   clip_count: number

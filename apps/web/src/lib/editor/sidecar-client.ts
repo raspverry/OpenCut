@@ -4,6 +4,8 @@ import type {
   IngestResponse,
   LanguageCode,
   OpenCutExportManifest,
+  OpenCutExportManifestDraft,
+  OpenCutExportManifestDraftRequest,
   OpenCutExportQaResponse,
   OpenCutExportReport,
   SessionResponse,
@@ -107,6 +109,19 @@ export function createSidecarClient(options: { baseUrl?: string; fetcher?: Fetch
         {
           method: 'POST',
           body: JSON.stringify(manifest),
+        }
+      )
+    },
+    draftOpenCutExportManifest(
+      sessionId: string,
+      payload: OpenCutExportManifestDraftRequest
+    ) {
+      return requestJson<OpenCutExportManifestDraft>(
+        fetcher,
+        `${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/qa/opencut-export/manifest/draft`,
+        {
+          method: 'POST',
+          body: JSON.stringify(payload),
         }
       )
     },
