@@ -64,12 +64,32 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
           clips: spec.clips.filter((clip) => clip.clip_id === clipId),
         })
       )
+      setCandidateCount(1)
       setStatus('success')
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'timeline 적용 실패')
       setStatus('error')
     }
   }
+
+  async function applyAllClips() {
+    if (!sidecarClient.getTimelineSpec || !onApplyTimeline) {
+      setErrorMessage('timeline 적용 경로가 없습니다')
+      setStatus('error')
+      return
+    }
+    try {
+      const spec = await sidecarClient.getTimelineSpec(sessionId)
+      onApplyTimeline(applyTimelineSpec(spec))
+      setCandidateCount(spec.clips.length)
+      setStatus('success')
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'timeline 적용 실패')
+      setStatus('error')
+    }
+  }
+
+  const displayClips = analyzedClips ?? clips
 
   const statusText =
     status === 'loading'
@@ -121,6 +141,15 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
         >
           Analyze
         </button>
+        {sidecarClient.getTimelineSpec && onApplyTimeline && displayClips.length > 1 ? (
+          <button
+            type="button"
+            onClick={applyAllClips}
+            className="inline-flex h-7 shrink-0 items-center justify-center rounded-md border px-2 text-xs hover:bg-muted"
+          >
+            Apply All
+          </button>
+        ) : null}
         <p
           role={status === 'error' ? 'alert' : 'status'}
           className="truncate text-xs text-muted-foreground"
@@ -129,7 +158,7 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
         </p>
       </div>
       <CandidateList
-        clips={analyzedClips ?? clips}
+        clips={displayClips}
         onApplyClip={sidecarClient.getTimelineSpec && onApplyTimeline ? applyClip : undefined}
       />
     </aside>

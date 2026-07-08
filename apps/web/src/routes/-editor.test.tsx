@@ -210,6 +210,62 @@ describe('EditorPage', () => {
     })
   })
 
+  it('applies all analyzed candidates and submits export QA for every clip', async () => {
+    const analyze = vi.fn(async () => multiAnalyzedCandidateResponse())
+    const getTimelineSpec = vi.fn(async () => multiTimelineSpec())
+    const verifyOpenCutExport = vi.fn(async () => ({
+      session_id: '20260708-opencut-fixture',
+      clip_count: 2,
+      total_duration_sec: 54,
+      by_product: { p02: 1, p03: 1 },
+    }))
+    render(
+      <EditorShell
+        timelineSpec={mockTimelineSpec}
+        sidecarClient={{ analyze, getTimelineSpec, verifyOpenCutExport }}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze' }))
+    await waitFor(() => expect(screen.getByText('p02-c01')).toBeTruthy())
+    expect(screen.getByText('p03-c01')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Apply All' }))
+
+    await waitFor(() => expect(screen.getByText('p02-c01-video')).toBeTruthy())
+    expect(screen.getByText('p03-c01-video')).toBeTruthy()
+    const lufsInputs = screen.getAllByLabelText('Integrated LUFS')
+    fireEvent.change(lufsInputs[0], { target: { value: '-14.2' } })
+    fireEvent.change(lufsInputs[1], { target: { value: '-13.9' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Run Export QA' }))
+
+    await waitFor(() => expect(screen.getByText('QA passed: 2 clips, 54.0s')).toBeTruthy())
+    expect(verifyOpenCutExport).toHaveBeenCalledWith('20260708-opencut-fixture', {
+      session_id: '20260708-opencut-fixture',
+      renderer: 'opencut',
+      exported_at: expect.any(String),
+      fingerprint: mockTimelineSpec.fingerprint,
+      ok: true,
+      clips: [
+        {
+          clip_id: 'p02-c01',
+          video_file: 'final/p02-c01.mp4',
+          duration_sec: 26,
+          integrated_lufs: -14.2,
+          subtitle_evidence_file: 'qa/opencut-subtitles/p02-c01.jpg',
+          errors: [],
+        },
+        {
+          clip_id: 'p03-c01',
+          video_file: 'final/p03-c01.mp4',
+          duration_sec: 28,
+          integrated_lufs: -13.9,
+          subtitle_evidence_file: 'qa/opencut-subtitles/p03-c01.jpg',
+          errors: [],
+        },
+      ],
+    })
+  })
+
   it('blocks export QA submission when renderer metadata is invalid', async () => {
     const analyze = vi.fn(async () => analyzedCandidateResponse())
     const getTimelineSpec = vi.fn(async () => ({
@@ -275,5 +331,75 @@ function analyzedCandidateResponse() {
         },
       ],
     },
+  }
+}
+
+function multiAnalyzedCandidateResponse() {
+  return {
+    session_id: '20260708-opencut-fixture',
+    provider: 'openai',
+    language: 'ja',
+    max_clip_sec: 30,
+    candidates: {
+      session_id: '20260708-opencut-fixture',
+      llm_model: 'gpt-4.1',
+      generated_at: '2026-07-08T11:00:00+09:00',
+      clips: [
+        {
+          clip_id: 'p02-c01',
+          product_id: 'p02',
+          start_sec: 32,
+          end_sec: 58,
+          segment_range: [4, 7],
+          score: 94,
+          reason: '価格、実演、使用感が連続している',
+          hook_text: 'この落ち方見て',
+          caption: 'ティントの落ちにくさを実演',
+          hashtags: ['コスメ'],
+        },
+        {
+          clip_id: 'p03-c01',
+          product_id: 'p03',
+          start_sec: 64,
+          end_sec: 92,
+          segment_range: [8, 12],
+          score: 90,
+          reason: '使い方と仕上がりが連続している',
+          hook_text: '仕上がり比べて',
+          caption: 'ブラシの仕上がりを実演',
+          hashtags: ['コスメ'],
+        },
+      ],
+    },
+  }
+}
+
+function multiTimelineSpec() {
+  return {
+    ...mockTimelineSpec,
+    clips: [
+      {
+        clip_id: 'p02-c01',
+        product_id: 'p02',
+        source_range_sec: [32, 58],
+        timeline_start_sec: 0,
+        hook_text: 'この落ち方見て',
+        caption_file: 'caption_cues/p02-c01.json',
+        caption_style: 'ja-shorts-safe-v1',
+        score: 94,
+        reason: '価格、実演、使用感が連続している',
+      },
+      {
+        clip_id: 'p03-c01',
+        product_id: 'p03',
+        source_range_sec: [64, 92],
+        timeline_start_sec: 26,
+        hook_text: '仕上がり比べて',
+        caption_file: 'caption_cues/p03-c01.json',
+        caption_style: 'ja-shorts-safe-v1',
+        score: 90,
+        reason: '使い方と仕上がりが連続している',
+      },
+    ],
   }
 }
