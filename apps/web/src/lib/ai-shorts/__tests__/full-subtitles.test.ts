@@ -24,6 +24,14 @@ const cueFile: CaptionCueFile = {
 	language: "ja",
 	preset: "ja-shorts-safe-v1",
 	source_range_sec: [0, 4201.2],
+	source_video: {
+		file: "raw/recording.mp4",
+		duration_sec: 4201.2,
+		width: 1280,
+		height: 720,
+		orientation: "horizontal",
+	},
+	fingerprint: `sha256:${"1".repeat(64)}`,
 	style: {
 		format: "word_pop",
 		font_family: "Noto Sans CJK JP",
@@ -97,6 +105,30 @@ describe("sourceMatchesFullSubtitleCues", () => {
 				captionCues: cueFile,
 			}),
 		).toBe(false);
+	});
+
+	test("rejects a different source resolution when cue metadata is present", () => {
+		expect(
+			sourceMatchesFullSubtitleCues({
+				sourceAsset: { ...sourceAsset, width: 1920, height: 1080 },
+				captionCues: cueFile,
+			}),
+		).toBe(false);
+	});
+
+	test("falls back to duration matching for legacy cue files without source metadata", () => {
+		const {
+			source_video: _sourceVideo,
+			fingerprint: _fingerprint,
+			...legacyCueFile
+		} = cueFile;
+
+		expect(
+			sourceMatchesFullSubtitleCues({
+				sourceAsset: { ...sourceAsset, width: 1920, height: 1080 },
+				captionCues: legacyCueFile,
+			}),
+		).toBe(true);
 	});
 });
 

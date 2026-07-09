@@ -23,9 +23,18 @@ export function sourceMatchesFullSubtitleCues({
 	if (!Number.isFinite(sourceAsset.duration) || !sourceAsset.duration) {
 		return false;
 	}
+	const expectedSource = captionCues.source_video;
+	const expectedDuration =
+		expectedSource?.duration_sec ?? fullSubtitleCueDuration(captionCues);
+	if (Math.abs(sourceAsset.duration - expectedDuration) > toleranceSec) {
+		return false;
+	}
+	if (!expectedSource) {
+		return true;
+	}
 	return (
-		Math.abs(sourceAsset.duration - fullSubtitleCueDuration(captionCues)) <=
-		toleranceSec
+		sourceDimensionMatches(sourceAsset.width, expectedSource.width) &&
+		sourceDimensionMatches(sourceAsset.height, expectedSource.height)
 	);
 }
 
@@ -85,6 +94,16 @@ function fullSubtitleCueDuration(captionCues: CaptionCueFile) {
 		captionCues.source_range_sec[1],
 		...captionCues.cues.map((cue) => cue.end_sec),
 	);
+}
+
+function sourceDimensionMatches(
+	actual: number | null | undefined,
+	expected: number | null | undefined,
+) {
+	if (expected == null) {
+		return true;
+	}
+	return actual === expected;
 }
 
 function fullSubtitleTrackNames(clipId: string) {

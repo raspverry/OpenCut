@@ -64,6 +64,9 @@ export type Candidates = {
 export type TimelineSourceVideo = {
 	file: string;
 	duration_sec: number;
+	width?: number | null;
+	height?: number | null;
+	orientation?: "vertical" | "horizontal" | null;
 };
 
 export type TimelineClip = {
@@ -119,6 +122,8 @@ export type CaptionCueFile = {
 	language: LanguageCode;
 	preset: string;
 	source_range_sec: [number, number];
+	source_video?: TimelineSourceVideo | null;
+	fingerprint?: string | null;
 	cues: CaptionCue[];
 	style: CaptionStyle;
 };
