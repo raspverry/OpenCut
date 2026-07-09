@@ -28,14 +28,14 @@ import { sourceMatchesTimelineSpec } from "@/lib/ai-shorts/source-match";
 import { buildAiShortsInsertPlanFromSpec } from "@/lib/ai-shorts/timeline";
 import type {
 	LanguageCode,
-	OpenCutExportArtifact,
-	OpenCutExportQaResponse,
 	SidecarProvider,
 	SourceLanguageCode,
 	TimelineClip,
 	TimelineSpec,
 } from "@/lib/ai-shorts/types";
 import type { MediaAsset } from "@/lib/media/types";
+import { useAiShortsExportStore } from "@/stores/ai-shorts-export-store";
+import { Target } from "lucide-react";
 import { toast } from "sonner";
 
 type LoadState = "idle" | "loading" | "ingesting" | "analyzing" | "inserting";
@@ -64,11 +64,21 @@ export function AiShortsView() {
 	const [refreshAnalysis, setRefreshAnalysis] = useState(false);
 	const [timelineSpec, setTimelineSpec] = useState<TimelineSpec | null>(null);
 	const [clips, setClips] = useState<TimelineClip[]>([]);
-	const [uploadedExportArtifacts, setUploadedExportArtifacts] = useState<
-		Record<string, OpenCutExportArtifact>
-	>({});
-	const [exportQaSummary, setExportQaSummary] =
-		useState<OpenCutExportQaResponse | null>(null);
+	const exportTarget = useAiShortsExportStore((store) => store.target);
+	const uploadedExportArtifacts = useAiShortsExportStore(
+		(store) => store.artifacts,
+	);
+	const exportQaSummary = useAiShortsExportStore((store) => store.qaSummary);
+	const setExportTarget = useAiShortsExportStore((store) => store.setTarget);
+	const setExportArtifact = useAiShortsExportStore(
+		(store) => store.setArtifact,
+	);
+	const setExportQaSummary = useAiShortsExportStore(
+		(store) => store.setQaSummary,
+	);
+	const resetExportArtifacts = useAiShortsExportStore(
+		(store) => store.resetArtifacts,
+	);
 	const [state, setState] = useState<LoadState>("idle");
 
 	useEffect(() => {
@@ -88,8 +98,7 @@ export function AiShortsView() {
 		setTimelineSpec(spec);
 		setClips(spec.clips);
 		setLanguage(spec.language);
-		setUploadedExportArtifacts({});
-		setExportQaSummary(null);
+		resetExportArtifacts();
 	};
 
 	const fetchTimelineSpec = async (normalizedSessionId: string) => {
@@ -317,10 +326,7 @@ export function AiShortsView() {
 				clip.clip_id,
 				file,
 			);
-			setUploadedExportArtifacts((current) => ({
-				...current,
-				[clip.clip_id]: artifact,
-			}));
+			setExportArtifact(artifact);
 			setExportQaSummary(null);
 			toast.success(`Uploaded ${clip.clip_id} export`);
 		} catch (error) {
@@ -656,9 +662,25 @@ export function AiShortsView() {
 							key={clip.clip_id}
 							clip={clip}
 							artifact={uploadedExportArtifacts[clip.clip_id]}
+							isExportTarget={
+								exportTarget?.sessionId === sessionId.trim() &&
+								exportTarget.clipId === clip.clip_id
+							}
 							insertDisabled={!sourceMatchesSpec || isBusy}
 							uploadDisabled={isBusy}
 							onInsert={() => insertOne(clip)}
+							onUseAsExportTarget={() => {
+								const normalizedSessionId = sessionId.trim();
+								if (!normalizedSessionId) {
+									toast.error("Enter a sidecar session id");
+									return;
+								}
+								setExportTarget({
+									sessionId: normalizedSessionId,
+									clipId: clip.clip_id,
+								});
+								toast.success(`${clip.clip_id} is the OpenCut export QA target`);
+							}}
 							onUploadExport={(file) => uploadExportArtifact(clip, file)}
 						/>
 					))
@@ -671,16 +693,20 @@ export function AiShortsView() {
 function TimelineClipCard({
 	clip,
 	artifact,
+	isExportTarget,
 	insertDisabled,
 	uploadDisabled,
 	onInsert,
+	onUseAsExportTarget,
 	onUploadExport,
 }: {
 	clip: TimelineClip;
-	artifact?: OpenCutExportArtifact;
+	artifact?: { video_file: string; byte_size: number };
+	isExportTarget: boolean;
 	insertDisabled: boolean;
 	uploadDisabled: boolean;
 	onInsert: () => void;
+	onUseAsExportTarget: () => void;
 	onUploadExport: (file: File | null) => void;
 }) {
 	return (
@@ -693,14 +719,26 @@ function TimelineClipCard({
 						score {Math.round(clip.score)}
 					</div>
 				</div>
-				<Button
-					size="sm"
-					variant="outline"
-					onClick={onInsert}
-					disabled={insertDisabled}
-				>
-					Insert
-				</Button>
+				<div className="flex shrink-0 gap-1">
+					<Button
+						size="icon"
+						variant={isExportTarget ? "default" : "outline"}
+						onClick={onUseAsExportTarget}
+						disabled={uploadDisabled}
+						title="Use for OpenCut export QA"
+						aria-label={`Use ${clip.clip_id} for OpenCut export QA`}
+					>
+						<Target className="size-4" />
+					</Button>
+					<Button
+						size="sm"
+						variant="outline"
+						onClick={onInsert}
+						disabled={insertDisabled}
+					>
+						Insert
+					</Button>
+				</div>
 			</div>
 			{clip.reason && (
 				<p className="text-muted-foreground line-clamp-2 text-xs">

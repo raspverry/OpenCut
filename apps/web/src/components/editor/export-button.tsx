@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { TransitionTopIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -34,6 +34,9 @@ import {
 } from "@/components/section";
 import { useEditor } from "@/hooks/use-editor";
 import { DEFAULT_EXPORT_OPTIONS } from "@/constants/export-constants";
+import { createSidecarClient } from "@/lib/ai-shorts/sidecar-client";
+import { useAiShortsExportStore } from "@/stores/ai-shorts-export-store";
+import { toast } from "sonner";
 
 function isExportFormat(value: string): value is ExportFormat {
 	return EXPORT_FORMAT_VALUES.some((formatValue) => formatValue === value);
@@ -101,6 +104,14 @@ function ExportPopover({
 	const activeProject = useEditor((e) => e.project.getActive());
 	const exportState = useEditor((e) => e.project.getExportState());
 	const { isExporting, progress, result: exportResult } = exportState;
+	const sidecar = useMemo(() => createSidecarClient(), []);
+	const aiExportTarget = useAiShortsExportStore((store) => store.target);
+	const setAiExportArtifact = useAiShortsExportStore(
+		(store) => store.setArtifact,
+	);
+	const setAiExportQaSummary = useAiShortsExportStore(
+		(store) => store.setQaSummary,
+	);
 	const [format, setFormat] = useState<ExportFormat>(
 		DEFAULT_EXPORT_OPTIONS.format,
 	);
@@ -110,6 +121,9 @@ function ExportPopover({
 	const [shouldIncludeAudio, setShouldIncludeAudio] = useState<boolean>(
 		DEFAULT_EXPORT_OPTIONS.includeAudio ?? true,
 	);
+	const [shouldRunAiQa, setShouldRunAiQa] = useState(true);
+	const [isRunningAiQa, setIsRunningAiQa] = useState(false);
+	const isBusy = isExporting || isRunningAiQa;
 
 	const handleExport = async () => {
 		if (!activeProject) return;
@@ -129,10 +143,44 @@ function ExportPopover({
 		}
 
 		if (result.success && result.buffer) {
+			const filename = `${activeProject.metadata.name}${getExportFileExtension({ format })}`;
+			const mimeType = getExportMimeType({ format });
+
+			if (aiExportTarget && shouldRunAiQa) {
+				setIsRunningAiQa(true);
+				try {
+					const file = new File([result.buffer], filename, { type: mimeType });
+					const artifact = await sidecar.uploadOpenCutExportArtifact(
+						aiExportTarget.sessionId,
+						aiExportTarget.clipId,
+						file,
+					);
+					const draft = await sidecar.draftOpenCutExportManifest(
+						aiExportTarget.sessionId,
+						[aiExportTarget.clipId],
+					);
+					if (draft.missing_files.length > 0) {
+						throw new Error(`Missing exports: ${draft.missing_files.join(", ")}`);
+					}
+					const summary = await sidecar.verifyOpenCutExportManifest(
+						aiExportTarget.sessionId,
+						draft.manifest,
+					);
+					setAiExportArtifact(artifact);
+					setAiExportQaSummary(summary);
+					toast.success(`AI QA passed for ${aiExportTarget.clipId}`);
+				} catch (error) {
+					toast.error(errorMessage(error));
+					return;
+				} finally {
+					setIsRunningAiQa(false);
+				}
+			}
+
 			downloadBuffer({
 				buffer: result.buffer,
-				filename: `${activeProject.metadata.name}${getExportFileExtension({ format })}`,
-				mimeType: getExportMimeType({ format }),
+				filename,
+				mimeType,
 			});
 
 			editor.project.clearExportState();
@@ -155,12 +203,12 @@ function ExportPopover({
 				<>
 					<div className="flex items-center justify-between p-3 border-b">
 						<h3 className="font-medium text-sm">
-							{isExporting ? "Exporting project" : "Export project"}
+							{isBusy ? busyTitle({ isRunningAiQa }) : "Export project"}
 						</h3>
 					</div>
 
 					<div className="flex flex-col gap-4">
-						{!isExporting && (
+						{!isBusy && (
 							<>
 								<div className="flex flex-col">
 									<Section
@@ -250,6 +298,28 @@ function ExportPopover({
 											</div>
 										</SectionContent>
 									</Section>
+
+									{aiExportTarget && (
+										<Section collapsible defaultOpen>
+											<SectionHeader>
+												<SectionTitle>AI Shorts QA</SectionTitle>
+											</SectionHeader>
+											<SectionContent>
+												<div className="flex items-center space-x-2">
+													<Checkbox
+														id="ai-shorts-export-qa"
+														checked={shouldRunAiQa}
+														onCheckedChange={(checked) =>
+															setShouldRunAiQa(!!checked)
+														}
+													/>
+													<Label htmlFor="ai-shorts-export-qa">
+														Verify {aiExportTarget.clipId} before download
+													</Label>
+												</div>
+											</SectionContent>
+										</Section>
+									)}
 								</div>
 
 								<div className="p-3 pt-0">
@@ -261,25 +331,30 @@ function ExportPopover({
 							</>
 						)}
 
-						{isExporting && (
+						{isBusy && (
 							<div className="space-y-4 p-3">
 								<div className="flex flex-col gap-2">
 									<div className="flex items-center justify-between text-center">
 										<p className="text-muted-foreground text-sm">
-											{Math.round(progress * 100)}%
+											{isRunningAiQa ? "QA" : `${Math.round(progress * 100)}%`}
 										</p>
 										<p className="text-muted-foreground text-sm">100%</p>
 									</div>
-									<Progress value={progress * 100} className="w-full" />
+									<Progress
+										value={isRunningAiQa ? 100 : progress * 100}
+										className="w-full"
+									/>
 								</div>
 
-								<Button
-									variant="outline"
-									className="w-full rounded-md"
-									onClick={handleCancel}
-								>
-									Cancel
-								</Button>
+								{isExporting && (
+									<Button
+										variant="outline"
+										className="w-full rounded-md"
+										onClick={handleCancel}
+									>
+										Cancel
+									</Button>
+								)}
 							</div>
 						)}
 					</div>
@@ -287,6 +362,14 @@ function ExportPopover({
 			)}
 		</PopoverContent>
 	);
+}
+
+function busyTitle({ isRunningAiQa }: { isRunningAiQa: boolean }) {
+	return isRunningAiQa ? "Running AI Shorts QA" : "Exporting project";
+}
+
+function errorMessage(error: unknown) {
+	return error instanceof Error ? error.message : "Unexpected sidecar error";
 }
 
 function ExportError({
