@@ -136,6 +136,35 @@ export function buildAiShortsInsertPlanFromSpec({
 				);
 			}
 		}
+
+		const ctaDuration = Math.min(3, duration);
+		elements.push(
+			buildTextElement({
+				raw: {
+					name: `${clip.clip_id} cta`,
+					content: ctaText(captionCues?.language),
+					duration: ctaDuration,
+					fontSize: 44,
+					fontFamily: "Noto Sans JP",
+					color: "#ffffff",
+					background: {
+						enabled: true,
+						color: "rgba(0, 0, 0, 0.72)",
+						cornerRadius: 16,
+						paddingX: 24,
+						paddingY: 12,
+					},
+					textAlign: "center",
+					fontWeight: "bold",
+					lineHeight: 1.12,
+					transform: {
+						...copyDefaultTransform(),
+						position: { x: 0, y: -500 },
+					},
+				},
+				startTime: startTime + duration - ctaDuration,
+			}),
+		);
 	}
 
 	return {
@@ -174,6 +203,11 @@ function captionSafeAreaY(anchor: CaptionCueFile["style"]["safe_area"]["anchor"]
 	if (anchor === "top") return -500;
 	if (anchor === "center") return 0;
 	return 500;
+}
+
+function ctaText(language: CaptionCueFile["language"] | undefined) {
+	if (language === "ko") return "TikTok Shop에서 확인";
+	return "TikTok Shopでチェック";
 }
 
 function roundTiming(seconds: number) {

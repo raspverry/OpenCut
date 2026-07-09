@@ -72,7 +72,7 @@ describe("buildAiShortsInsertPlanFromSpec", () => {
 
 		expect(plan.duration).toBe(20);
 		expect(plan.sourceRange).toEqual([10, 30]);
-		expect(plan.elements).toHaveLength(4);
+		expect(plan.elements).toHaveLength(5);
 		expect(plan.elements[0]).toMatchObject({
 			type: "video",
 			mediaId: "source-video",
@@ -122,6 +122,25 @@ describe("buildAiShortsInsertPlanFromSpec", () => {
 			content: "このツヤがすぐ出ます",
 			startTime: 8,
 			duration: 5,
+		});
+	});
+
+	test("adds an editable CTA text element at the end of the clip", () => {
+		const plan = buildAiShortsInsertPlanFromSpec({
+			clip: baseClip,
+			sourceAsset,
+			startTime: 5,
+			includeText: true,
+			captionCues: cueFile,
+		});
+
+		expect(plan.elements[4]).toMatchObject({
+			type: "text",
+			name: "p01-c01 cta",
+			content: "TikTok Shopでチェック",
+			startTime: 22,
+			duration: 3,
+			fontFamily: "Noto Sans JP",
 		});
 	});
 
