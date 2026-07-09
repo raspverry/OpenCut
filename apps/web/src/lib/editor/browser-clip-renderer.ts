@@ -18,6 +18,9 @@ const MIME_TYPES = [
   'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
   'video/mp4;codecs=avc1.42E01E',
   'video/mp4',
+  'video/webm;codecs=vp9,opus',
+  'video/webm;codecs=vp8,opus',
+  'video/webm',
 ]
 
 export function createBrowserClipRenderer({
@@ -66,7 +69,7 @@ export function selectMediaRecorderMimeType(): string {
   }
   const mimeType = MIME_TYPES.find((candidate) => MediaRecorder.isTypeSupported(candidate))
   if (!mimeType) {
-    throw new Error('이 브라우저는 MP4 MediaRecorder export를 지원하지 않습니다')
+    throw new Error('이 브라우저는 MediaRecorder video export를 지원하지 않습니다')
   }
   return mimeType
 }

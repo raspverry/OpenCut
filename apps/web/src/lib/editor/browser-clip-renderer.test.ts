@@ -23,14 +23,25 @@ describe('browser clip renderer helpers', () => {
     expect(selectMediaRecorderMimeType()).toBe('video/mp4')
   })
 
-  it('fails clearly when the browser cannot record MP4', () => {
+  it('falls back to WebM when MP4 MediaRecorder is unavailable', () => {
+    class MockMediaRecorder {
+      static isTypeSupported = vi.fn(
+        (mimeType: string) => mimeType === 'video/webm;codecs=vp9,opus'
+      )
+    }
+    vi.stubGlobal('MediaRecorder', MockMediaRecorder)
+
+    expect(selectMediaRecorderMimeType()).toBe('video/webm;codecs=vp9,opus')
+  })
+
+  it('fails clearly when the browser cannot record video', () => {
     class MockMediaRecorder {
       static isTypeSupported = vi.fn(() => false)
     }
     vi.stubGlobal('MediaRecorder', MockMediaRecorder)
 
     expect(() => selectMediaRecorderMimeType()).toThrow(
-      '이 브라우저는 MP4 MediaRecorder export를 지원하지 않습니다'
+      '이 브라우저는 MediaRecorder video export를 지원하지 않습니다'
     )
   })
 
