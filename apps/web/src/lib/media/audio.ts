@@ -34,6 +34,29 @@ export interface CollectedAudioElement {
 	retime?: RetimeConfig;
 }
 
+export function getTimelineElementAudioDecodeRange({
+	trimStart,
+	duration,
+	retime,
+}: {
+	trimStart: number;
+	duration: number;
+	retime?: RetimeConfig;
+}): {
+	startTimestamp: number;
+	endTimestamp: number;
+} {
+	const startTimestamp = Math.max(0, trimStart);
+	const sourceDuration = Math.max(
+		0,
+		getSourceTimeAtClipTime({ clipTime: duration, retime }),
+	);
+	return {
+		startTimestamp,
+		endTimestamp: startTimestamp + sourceDuration,
+	};
+}
+
 export function createAudioContext({
 	sampleRate,
 }: {
@@ -132,21 +155,30 @@ export async function collectAudioElements({
 			if (element.type === "video") {
 				const mediaAsset = mediaMap.get(element.mediaId);
 				if (!mediaAsset || !mediaSupportsAudio({ media: mediaAsset })) continue;
+				const decodeRange = getTimelineElementAudioDecodeRange({
+					trimStart: element.trimStart,
+					duration: element.duration,
+					retime: element.retime,
+				});
 
 				pendingElements.push(
 					resolveAudioBufferForVideoElement({
 						mediaAsset,
 						audioContext,
-					}).then((audioBuffer) => {
-						if (!audioBuffer) return null;
+						...decodeRange,
+					}).then((decodedAudio) => {
+						if (!decodedAudio) return null;
 						const muted = (element.muted ?? false) || isTrackMuted;
 						return {
 							timelineElement: element,
-							buffer: audioBuffer,
+							buffer: decodedAudio.buffer,
 							startTime: element.startTime,
 							duration: element.duration,
-							trimStart: element.trimStart,
-							trimEnd: element.trimEnd,
+							trimStart: Math.max(
+								0,
+								element.trimStart - decodedAudio.startTimestamp,
+							),
+							trimEnd: 0,
 							volume: resolveEffectiveAudioGain({
 								element,
 								trackMuted: isTrackMuted,
@@ -205,10 +237,14 @@ async function resolveAudioBufferForElement({
 async function resolveAudioBufferForVideoElement({
 	mediaAsset,
 	audioContext,
+	startTimestamp,
+	endTimestamp,
 }: {
 	mediaAsset: MediaAsset;
 	audioContext: AudioContext;
-}): Promise<AudioBuffer | null> {
+	startTimestamp: number;
+	endTimestamp: number;
+}): Promise<{ buffer: AudioBuffer; startTimestamp: number } | null> {
 	const input = new Input({
 		source: new BlobSource(mediaAsset.file),
 		formats: ALL_FORMATS,
@@ -223,8 +259,13 @@ async function resolveAudioBufferForVideoElement({
 
 		const chunks: AudioBuffer[] = [];
 		let totalSamples = 0;
+		let firstTimestamp: number | null = null;
 
-		for await (const { buffer } of sink.buffers(0)) {
+		for await (const { buffer, timestamp } of sink.buffers(
+			startTimestamp,
+			endTimestamp,
+		)) {
+			firstTimestamp ??= timestamp;
 			chunks.push(buffer);
 			totalSamples += buffer.length;
 		}
@@ -276,7 +317,10 @@ async function resolveAudioBufferForVideoElement({
 		sourceNode.connect(offlineContext.destination);
 		sourceNode.start(0);
 
-		return await offlineContext.startRendering();
+		return {
+			buffer: await offlineContext.startRendering(),
+			startTimestamp: firstTimestamp ?? startTimestamp,
+		};
 	} catch (error) {
 		console.warn("Failed to decode video audio:", error);
 		return null;
