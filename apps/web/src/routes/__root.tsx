@@ -5,6 +5,9 @@ import { TooltipProvider } from '../components/ui/tooltip'
 
 import appCss from '../styles.css?url'
 
+const showTanStackDevtools =
+  import.meta.env.DEV && import.meta.env.VITE_SHOW_TANSTACK_DEVTOOLS === 'true'
+
 export const Route = createRootRoute({
   head: () => ({
     meta: [
@@ -57,17 +60,19 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <TooltipProvider>
           {children}
         </TooltipProvider>
-        <TanStackDevtools
-          config={{
-            position: 'bottom-right',
-          }}
-          plugins={[
-            {
-              name: 'Tanstack Router',
-              render: <TanStackRouterDevtoolsPanel />,
-            },
-          ]}
-        />
+        {showTanStackDevtools ? (
+          <TanStackDevtools
+            config={{
+              position: 'bottom-right',
+            }}
+            plugins={[
+              {
+                name: 'Tanstack Router',
+                render: <TanStackRouterDevtoolsPanel />,
+              },
+            ]}
+          />
+        ) : null}
         <Scripts />
       </body>
     </html>

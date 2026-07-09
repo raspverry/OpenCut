@@ -18,7 +18,7 @@ describe('AiShortsPanel', () => {
     expect((screen.getByLabelText('Model') as HTMLSelectElement).value).toBe('gpt-5.5')
     expect((screen.getByLabelText('Source Language') as HTMLSelectElement).value).toBe('ja')
     expect((screen.getByLabelText('Caption Language') as HTMLSelectElement).value).toBe('ja')
-    expect(screen.getByText('Max 30s')).toBeTruthy()
+    expect(screen.getByText('30s max')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Analyze' })).toBeTruthy()
   })
 
@@ -96,7 +96,7 @@ describe('AiShortsPanel', () => {
   it('shows an empty candidate state before analyze', () => {
     render(<AiShortsPanel sessionId="20260708-sale" clips={[]} client={idleClient()} />)
 
-    expect(screen.getByText('Run Analyze to generate candidates')).toBeTruthy()
+    expect(screen.getByText('Find highlights to populate the cut list.')).toBeTruthy()
   })
 
   it('rebases one applied clip to timeline zero', async () => {

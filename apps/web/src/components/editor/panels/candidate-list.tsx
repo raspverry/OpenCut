@@ -10,24 +10,35 @@ type CandidateListProps = {
 export function CandidateList({ clips, onApplyClip }: CandidateListProps) {
   if (clips.length === 0) {
     return (
-      <div className="mt-3 rounded-md border border-dashed border-slate-700 bg-slate-950/40 px-3 py-4 text-xs text-slate-400">
-        Run Analyze to generate candidates
+      <div className="mt-3 rounded-[5px] border border-dashed border-slate-700 bg-slate-950/40 px-3 py-4 text-xs text-slate-400">
+        Find highlights to populate the cut list.
       </div>
     )
   }
 
   return (
-    <div className="mt-3 divide-y divide-slate-800 overflow-hidden rounded-md border border-slate-800 bg-slate-950/25">
+    <div className="mt-3 space-y-2">
       {clips.map((clip) => (
         <article
-          className="px-3 py-2.5 transition-colors hover:bg-slate-900/80"
+          className="rounded-[6px] border border-[#27303d] bg-[#0c1017] p-3 shadow-sm shadow-black/20 transition-colors hover:border-blue-400/35 hover:bg-[#111722]"
           key={clip.clip_id}
         >
           <div className="flex items-center justify-between gap-3">
             <h3 className="truncate text-xs font-semibold text-slate-100">{clip.clip_id}</h3>
-            <span className="shrink-0 rounded-sm bg-blue-500/15 px-1.5 py-0.5 text-[0.625rem] font-medium text-blue-200">
-              Score {clip.score}
-            </span>
+            <div
+              aria-label={`Score ${clip.score}`}
+              className="flex shrink-0 items-center gap-1.5"
+            >
+              <span className="h-1.5 w-12 overflow-hidden rounded-full bg-slate-800">
+                <span
+                  className="block h-full rounded-full bg-blue-400"
+                  style={{ width: `${Math.max(0, Math.min(100, clip.score))}%` }}
+                />
+              </span>
+              <span className="w-6 text-right font-mono text-[0.625rem] font-semibold text-blue-200">
+                {clip.score}
+              </span>
+            </div>
           </div>
           <dl className="mt-2 grid grid-cols-2 gap-2 text-[0.6875rem]">
             <div className="min-w-0">
@@ -43,7 +54,7 @@ export function CandidateList({ clips, onApplyClip }: CandidateListProps) {
           </dl>
           <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-300">{clip.reason}</p>
           {transcriptPreview(clip) ? (
-            <p className="mt-1 line-clamp-2 border-l border-slate-700 pl-2 text-xs leading-5 text-slate-400">
+            <p className="mt-2 line-clamp-2 border-l border-slate-700 pl-2 text-xs leading-5 text-slate-400">
               {transcriptPreview(clip)}
             </p>
           ) : null}
@@ -57,9 +68,9 @@ export function CandidateList({ clips, onApplyClip }: CandidateListProps) {
               type="button"
               aria-label={`Apply ${clip.clip_id}`}
               onClick={() => onApplyClip(clip.clip_id)}
-              className="mt-2 inline-flex h-7 items-center rounded-md border border-slate-700 bg-slate-900 px-2.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
+              className="mt-3 inline-flex h-7 items-center rounded-[5px] border border-slate-700 bg-slate-900 px-2.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
             >
-              Apply
+              Insert
             </button>
           ) : null}
         </article>

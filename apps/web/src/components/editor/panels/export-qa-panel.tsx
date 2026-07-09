@@ -52,7 +52,7 @@ export function ExportQaPanel({ sessionId, timeline, client, renderer }: ExportQ
   const clipKey = clipIds.join('|')
   const [outputs, setOutputs] = useState<Record<string, ClipExportMetadata>>({})
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, ReviewDraft>>({})
-  const [status, setStatus] = useState('Export QA ready')
+  const [status, setStatus] = useState('Ready')
   const [statusKind, setStatusKind] = useState<'info' | 'error'>('info')
   const [isRunning, setIsRunning] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -76,17 +76,17 @@ export function ExportQaPanel({ sessionId, timeline, client, renderer }: ExportQ
 
   async function runQa() {
     if (!timeline) {
-      setStatus('timeline 적용 후 QA를 실행하세요')
+      setStatus('Insert a clip before checking delivery')
       setStatusKind('error')
       return
     }
     if (!client?.verifyOpenCutExportManifest) {
-      setStatus('sidecar export QA 경로가 없습니다')
+      setStatus('Delivery check is unavailable')
       setStatusKind('error')
       return
     }
     if (clipIds.length === 0) {
-      setStatus('QA 대상 클립이 없습니다')
+      setStatus('No clips queued for delivery')
       setStatusKind('error')
       return
     }
@@ -100,7 +100,7 @@ export function ExportQaPanel({ sessionId, timeline, client, renderer }: ExportQ
       return
     }
     setIsRunning(true)
-    setStatus('Export QA running...')
+    setStatus('Checking delivery...')
     setStatusKind('info')
     try {
       const manifest = buildOpenCutExportManifest(timeline, {
@@ -116,7 +116,7 @@ export function ExportQaPanel({ sessionId, timeline, client, renderer }: ExportQ
       const result = await client.verifyOpenCutExportManifest(sessionId, manifest)
       const clipLabel = result.clip_count === 1 ? 'clip' : 'clips'
       setStatus(
-        `QA passed: ${result.clip_count} ${clipLabel}, ${result.total_duration_sec.toFixed(1)}s`
+        `Delivery check passed: ${result.clip_count} ${clipLabel}, ${result.total_duration_sec.toFixed(1)}s`
       )
       setStatusKind('info')
     } catch (error) {
@@ -129,22 +129,22 @@ export function ExportQaPanel({ sessionId, timeline, client, renderer }: ExportQ
 
   async function refreshExports() {
     if (!timeline) {
-      setStatus('timeline 적용 후 export 경로를 새로고침하세요')
+      setStatus('Insert clips before refreshing outputs')
       setStatusKind('error')
       return
     }
     if (!client?.draftOpenCutExportManifest) {
-      setStatus('sidecar export manifest 경로가 없습니다')
+      setStatus('Output refresh is unavailable')
       setStatusKind('error')
       return
     }
     if (clipIds.length === 0) {
-      setStatus('새로고침할 클립이 없습니다')
+      setStatus('No clips queued for output refresh')
       setStatusKind('error')
       return
     }
     setIsRefreshing(true)
-    setStatus('Refreshing export paths...')
+    setStatus('Refreshing outputs...')
     setStatusKind('info')
     try {
       const draft = await client.draftOpenCutExportManifest(sessionId, {
@@ -172,7 +172,7 @@ export function ExportQaPanel({ sessionId, timeline, client, renderer }: ExportQ
         return
       }
       const clipLabel = draft.manifest.clips.length === 1 ? 'clip' : 'clips'
-      setStatus(`Export paths refreshed: ${draft.manifest.clips.length} ${clipLabel}`)
+      setStatus(`Outputs refreshed: ${draft.manifest.clips.length} ${clipLabel}`)
       setStatusKind('info')
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'OpenCut export 경로 새로고침 실패')
@@ -213,17 +213,17 @@ export function ExportQaPanel({ sessionId, timeline, client, renderer }: ExportQ
 
   async function renderAndUploadExport(clipId: string) {
     if (!timeline) {
-      setStatus('timeline 적용 후 렌더하세요')
+      setStatus('Insert a clip before rendering')
       setStatusKind('error')
       return
     }
     if (!renderer) {
-      setStatus('OpenCut renderer adapter가 없습니다')
+      setStatus('Browser renderer is unavailable')
       setStatusKind('error')
       return
     }
     if (!client?.uploadOpenCutExportArtifact) {
-      setStatus('sidecar export artifact 업로드 경로가 없습니다')
+      setStatus('Upload endpoint is unavailable')
       setStatusKind('error')
       return
     }
@@ -234,7 +234,7 @@ export function ExportQaPanel({ sessionId, timeline, client, renderer }: ExportQ
       const buffer = await renderer.renderClipExport({ clipId, timeline })
       const artifact = await client.uploadOpenCutExportArtifact(sessionId, clipId, buffer)
       updateOutput(clipId, 'videoFile', artifact.video_file)
-      setStatus(`Rendered and uploaded ${clipId}: ${artifact.byte_size} bytes`)
+      setStatus(`Rendered ${clipId}: ${artifact.byte_size} bytes`)
       setStatusKind('info')
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'OpenCut render artifact 업로드 실패')
@@ -302,22 +302,22 @@ export function ExportQaPanel({ sessionId, timeline, client, renderer }: ExportQ
       aria-label="Export QA"
       className="flex min-h-[260px] flex-1 flex-col overflow-hidden bg-[#10141c]"
     >
-      <div className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b border-slate-800 px-3 py-3">
+      <div className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b border-[#252a34] px-3 py-3">
         <div>
-          <h2 className="text-xs font-semibold tracking-tight text-slate-200">Export QA</h2>
+          <h2 className="text-xs font-semibold tracking-tight text-slate-200">Delivery</h2>
           <p className="mt-1 text-xs leading-5 text-slate-500">
-            Sidecar probes exported MP4s for duration, loudness, and subtitle evidence.
+            Render selected clips and run final checks before handoff.
           </p>
         </div>
-        <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-slate-700 bg-slate-900 px-2.5 text-xs font-medium text-slate-400">
+        <span className="inline-flex h-7 items-center gap-1.5 rounded-[5px] border border-slate-700 bg-slate-900 px-2.5 text-xs font-medium text-slate-400">
           <CheckCircle2 className="size-3.5" aria-hidden="true" />
           {clipIds.length} queued
         </span>
       </div>
       <div className="min-h-0 flex-1 overflow-auto">
         {clipIds.length === 0 ? (
-          <div className="m-3 rounded-md border border-dashed border-slate-700 bg-slate-950/40 px-3 py-4 text-xs text-slate-400">
-            No applied clips
+          <div className="m-3 rounded-[5px] border border-dashed border-slate-700 bg-slate-950/40 px-3 py-4 text-xs text-slate-400">
+            Insert a clip into the sequence to enable delivery.
           </div>
         ) : null}
         {clipIds.map((clipId) => {
@@ -325,7 +325,7 @@ export function ExportQaPanel({ sessionId, timeline, client, renderer }: ExportQ
           const review = reviewDrafts[clipId] ?? defaultReviewDraft()
           return (
             <div
-              className="border-b border-slate-800 px-3 py-3 last:border-b-0"
+              className="border-b border-[#252a34] px-3 py-3 last:border-b-0"
               key={clipId}
             >
               <div className="flex items-center justify-between gap-3">
@@ -341,7 +341,7 @@ export function ExportQaPanel({ sessionId, timeline, client, renderer }: ExportQ
                 <span>Exported video file</span>
                 <input
                   aria-label={`Exported video file for ${clipId}`}
-                  className="h-8 w-full rounded-md border border-slate-700 bg-slate-950/80 px-2.5 text-xs text-slate-100 shadow-inner shadow-black/20 outline-none transition-colors placeholder:text-slate-600 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+                  className="h-8 w-full rounded-[5px] border border-slate-700 bg-slate-950/80 px-2.5 text-xs text-slate-100 shadow-inner shadow-black/20 outline-none transition-colors placeholder:text-slate-600 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
                   value={output.videoFile}
                   onChange={(event) =>
                     updateOutput(clipId, 'videoFile', event.currentTarget.value)
@@ -349,9 +349,9 @@ export function ExportQaPanel({ sessionId, timeline, client, renderer }: ExportQ
                 />
               </label>
               <p className="mt-2 text-[0.6875rem] leading-4 text-slate-500">
-                Loudness and subtitle contact sheet are measured after submit.
+                Final check measures duration, loudness, and subtitle evidence.
               </p>
-              <div className="mt-3 rounded-md border border-slate-800 bg-slate-950/35 p-2.5">
+              <div className="mt-3 rounded-[5px] border border-slate-800 bg-slate-950/35 p-2.5">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[0.6875rem] font-semibold text-slate-200">
                     Review
@@ -359,7 +359,7 @@ export function ExportQaPanel({ sessionId, timeline, client, renderer }: ExportQ
                   <button
                     type="button"
                     aria-label={`Load review ${clipId}`}
-                    className="h-7 rounded-md border border-slate-700 bg-slate-900 px-2 text-[0.6875rem] font-medium text-slate-200 transition-colors hover:bg-slate-800 disabled:pointer-events-none disabled:opacity-55"
+                    className="h-7 rounded-[5px] border border-slate-700 bg-slate-900 px-2 text-[0.6875rem] font-medium text-slate-200 transition-colors hover:bg-slate-800 disabled:pointer-events-none disabled:opacity-55"
                     disabled={isBusy}
                     onClick={() => {
                       void loadReview(clipId)
@@ -372,7 +372,7 @@ export function ExportQaPanel({ sessionId, timeline, client, renderer }: ExportQ
                   <span>Status</span>
                   <select
                     aria-label={`Review status for ${clipId}`}
-                    className="h-8 w-full rounded-md border border-slate-700 bg-slate-950/80 px-2 text-xs text-slate-100 outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+                    className="h-8 w-full rounded-[5px] border border-slate-700 bg-slate-950/80 px-2 text-xs text-slate-100 outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
                     value={review.status}
                     onChange={(event) =>
                       updateReviewDraft(clipId, {
@@ -389,7 +389,7 @@ export function ExportQaPanel({ sessionId, timeline, client, renderer }: ExportQ
                   <span>Hook</span>
                   <input
                     aria-label={`Hook text for ${clipId}`}
-                    className="h-8 w-full rounded-md border border-slate-700 bg-slate-950/80 px-2 text-xs text-slate-100 outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+                    className="h-8 w-full rounded-[5px] border border-slate-700 bg-slate-950/80 px-2 text-xs text-slate-100 outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
                     value={review.hookText}
                     onChange={(event) =>
                       updateReviewDraft(clipId, { hookText: event.currentTarget.value })
@@ -400,7 +400,7 @@ export function ExportQaPanel({ sessionId, timeline, client, renderer }: ExportQ
                   <span>Caption</span>
                   <input
                     aria-label={`Caption for ${clipId}`}
-                    className="h-8 w-full rounded-md border border-slate-700 bg-slate-950/80 px-2 text-xs text-slate-100 outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+                    className="h-8 w-full rounded-[5px] border border-slate-700 bg-slate-950/80 px-2 text-xs text-slate-100 outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
                     value={review.caption}
                     onChange={(event) =>
                       updateReviewDraft(clipId, { caption: event.currentTarget.value })
@@ -410,7 +410,7 @@ export function ExportQaPanel({ sessionId, timeline, client, renderer }: ExportQ
                 <button
                   type="button"
                   aria-label={`Save review ${clipId}`}
-                  className="mt-2 h-7 w-full rounded-md border border-slate-700 bg-slate-900 px-2 text-[0.6875rem] font-medium text-slate-200 transition-colors hover:bg-slate-800 disabled:pointer-events-none disabled:opacity-55"
+                  className="mt-2 h-7 w-full rounded-[5px] border border-slate-700 bg-slate-900 px-2 text-[0.6875rem] font-medium text-slate-200 transition-colors hover:bg-slate-800 disabled:pointer-events-none disabled:opacity-55"
                   disabled={isBusy}
                   onClick={() => {
                     void saveReview(clipId)
@@ -424,7 +424,7 @@ export function ExportQaPanel({ sessionId, timeline, client, renderer }: ExportQ
                 <input
                   aria-label={`Upload exported MP4 for ${clipId}`}
                   accept="video/mp4,.mp4"
-                  className="block w-full text-xs text-slate-400 file:mr-2 file:h-7 file:rounded-md file:border-0 file:bg-slate-900 file:px-2.5 file:text-xs file:font-medium file:text-slate-200 hover:file:bg-slate-800 disabled:pointer-events-none disabled:opacity-55"
+                  className="block w-full text-xs text-slate-400 file:mr-2 file:h-7 file:rounded-[5px] file:border-0 file:bg-slate-900 file:px-2.5 file:text-xs file:font-medium file:text-slate-200 hover:file:bg-slate-800 disabled:pointer-events-none disabled:opacity-55"
                   disabled={isBusy}
                   type="file"
                   onChange={(event) => {
@@ -437,7 +437,7 @@ export function ExportQaPanel({ sessionId, timeline, client, renderer }: ExportQ
                 <button
                   type="button"
                   aria-label={`Render and upload ${clipId}`}
-                  className="mt-3 inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-slate-700 bg-slate-900 px-3 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800 disabled:pointer-events-none disabled:opacity-55"
+                  className="mt-3 inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-[5px] border border-blue-400/40 bg-blue-500/10 px-3 text-xs font-medium text-blue-100 transition-colors hover:bg-blue-500/20 disabled:pointer-events-none disabled:opacity-55"
                   disabled={isBusy}
                   onClick={() => {
                     void renderAndUploadExport(clipId)
@@ -446,31 +446,33 @@ export function ExportQaPanel({ sessionId, timeline, client, renderer }: ExportQ
                   {isRendering ? (
                     <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
                   ) : null}
-                  Render & Upload
+                  Render clip
                 </button>
               ) : null}
             </div>
           )
         })}
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-3 border-t border-slate-800 px-3 py-3">
+      <div className="flex shrink-0 flex-wrap items-center gap-3 border-t border-[#252a34] px-3 py-3">
         <button
           type="button"
-          className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-700 bg-slate-900 px-3 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800 disabled:pointer-events-none disabled:opacity-55"
+          aria-label="Refresh Exports"
+          className="inline-flex h-8 items-center gap-1.5 rounded-[5px] border border-slate-700 bg-slate-900 px-3 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800 disabled:pointer-events-none disabled:opacity-55"
           onClick={refreshExports}
           disabled={isBusy}
         >
           {isRefreshing ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : null}
-          Refresh Exports
+          Refresh outputs
         </button>
         <button
           type="button"
-          className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-500 px-3 text-xs font-medium text-white transition-colors hover:bg-blue-400 disabled:pointer-events-none disabled:opacity-55"
+          aria-label="Run Export QA"
+          className="inline-flex h-8 items-center gap-1.5 rounded-[5px] bg-blue-500 px-3 text-xs font-medium text-white transition-colors hover:bg-blue-400 disabled:pointer-events-none disabled:opacity-55"
           onClick={runQa}
           disabled={isBusy}
         >
           {isRunning ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : null}
-          Run Export QA
+          Check delivery
         </button>
         <p
           role={statusKind === 'error' ? 'alert' : 'status'}

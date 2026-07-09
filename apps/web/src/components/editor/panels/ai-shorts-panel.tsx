@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { ListPlus, Scissors, Sparkles } from 'lucide-react'
 
 import type { AppliedTimeline } from '../../../lib/editor/apply-timeline-spec'
 import { applyTimelineSpec } from '../../../lib/editor/apply-timeline-spec'
@@ -177,14 +178,28 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
           : 'Ready'
 
   return (
-    <section className="flex min-h-[320px] flex-[1.15] flex-col overflow-hidden border-b border-slate-800 bg-[#10141c] p-3">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-xs font-semibold tracking-tight text-slate-200">AI Shorts</h2>
-        <span className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-[0.6875rem] font-medium text-slate-400">
-          Max 30s
-        </span>
+    <section className="flex min-h-[360px] flex-[1.2] flex-col overflow-hidden border-b border-[#252a34] bg-[#10141c]">
+      <div className="border-b border-[#252a34] px-3 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-[5px] border border-blue-400/30 bg-blue-400/10 text-blue-200">
+              <Sparkles className="size-3.5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-xs font-semibold tracking-tight text-slate-100">
+                Clip Assistant
+              </h2>
+              <p className="truncate text-[0.6875rem] leading-4 text-slate-500">
+                Find highlights and insert shorts into the sequence.
+              </p>
+            </div>
+          </div>
+          <span className="rounded-[4px] border border-slate-700 bg-slate-900 px-2 py-1 text-[0.625rem] font-semibold uppercase tracking-[0.08em] text-slate-400">
+            30s max
+          </span>
+        </div>
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-2 px-3 py-3">
         <label className="space-y-1 text-xs text-slate-400">
           <span>Provider</span>
           <NativeSelect
@@ -240,42 +255,51 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
           </NativeSelect>
         </label>
       </div>
-      <div className="mt-3 flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center gap-2 border-y border-[#252a34] bg-[#0d1118] px-3 py-2">
         <button
           type="button"
+          aria-label="Analyze"
           onClick={analyze}
           disabled={status === 'loading'}
-          className="inline-flex h-8 shrink-0 items-center justify-center rounded-md bg-blue-500 px-3 text-xs font-medium text-white shadow-sm shadow-black/20 transition-colors hover:bg-blue-400 disabled:pointer-events-none disabled:opacity-50"
+          className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-[5px] bg-blue-500 px-3 text-xs font-medium text-white shadow-sm shadow-black/20 transition-colors hover:bg-blue-400 disabled:pointer-events-none disabled:opacity-50"
         >
-          Analyze
+          <Scissors className="size-3.5" aria-hidden="true" />
+          Find highlights
         </button>
         {sidecarClient.getCandidates ? (
           <button
             type="button"
+            aria-label="Load Candidates"
             onClick={loadCandidates}
             disabled={status === 'loading'}
-            className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-slate-700 bg-slate-900 px-2.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800 disabled:pointer-events-none disabled:opacity-50"
+            className="inline-flex h-8 shrink-0 items-center justify-center rounded-[5px] border border-slate-700 bg-slate-900 px-2.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800 disabled:pointer-events-none disabled:opacity-50"
           >
-            Load Candidates
+            Saved
           </button>
         ) : null}
         {sidecarClient.getTimelineSpec && onApplyTimeline && displayClips.length > 1 ? (
           <button
             type="button"
+            aria-label="Apply All"
             onClick={applyAllClips}
-            className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-slate-700 bg-slate-900 px-2.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
+            className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-[5px] border border-slate-700 bg-slate-900 px-2.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
           >
-            Apply All
+            <ListPlus className="size-3.5" aria-hidden="true" />
+            Insert all
           </button>
         ) : null}
         <p
           role={status === 'error' ? 'alert' : 'status'}
-          className={status === 'error' ? 'truncate text-xs text-red-300' : 'truncate text-xs text-slate-400'}
+          className={
+            status === 'error'
+              ? 'basis-full truncate text-xs text-red-300'
+              : 'basis-full truncate text-xs text-slate-400'
+          }
         >
           {statusText}
         </p>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div className="min-h-0 flex-1 overflow-auto px-3 pb-3">
         <CandidateList
           clips={displayClips}
           onApplyClip={sidecarClient.getTimelineSpec && onApplyTimeline ? applyClip : undefined}

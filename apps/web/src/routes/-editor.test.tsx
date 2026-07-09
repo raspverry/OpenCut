@@ -35,11 +35,11 @@ describe('EditorPage', () => {
     expect(screen.getByText('Program Monitor')).toBeTruthy()
     expect(screen.getByText('Sequence')).toBeTruthy()
     expect(screen.getByText('Inspector')).toBeTruthy()
-    expect(screen.getByText('AI Shorts')).toBeTruthy()
+    expect(screen.getByText('Clip Assistant')).toBeTruthy()
     expect(screen.getByText('p01-c01')).toBeTruthy()
     expect(screen.getByText('p01-c01-video')).toBeTruthy()
     expect(screen.getByText('p01')).toBeTruthy()
-    expect(screen.getByText('Score 87')).toBeTruthy()
+    expect(screen.getByLabelText('Score 87')).toBeTruthy()
     expect(screen.getByText('10.0s-28.0s')).toBeTruthy()
     expect(screen.getByText('実演と価格が同じ短い区間に入っている')).toBeTruthy()
   })
@@ -95,7 +95,7 @@ describe('EditorPage', () => {
 
     await waitFor(() => expect(screen.getByText('p02-c01')).toBeTruthy())
     expect(screen.getByText('p02')).toBeTruthy()
-    expect(screen.getByText('Score 94')).toBeTruthy()
+    expect(screen.getByLabelText('Score 94')).toBeTruthy()
     expect(screen.getByText('32.0s-58.0s')).toBeTruthy()
     expect(screen.getByText('価格、実演、使用感が連続している')).toBeTruthy()
     expect(screen.getByText('ティントの落ちにくさを実演')).toBeTruthy()
@@ -289,7 +289,9 @@ describe('EditorPage', () => {
     await waitFor(() => expect(screen.getByText('p02-c01-video')).toBeTruthy())
     fireEvent.click(screen.getByRole('button', { name: 'Run Export QA' }))
 
-    await waitFor(() => expect(screen.getByText('QA passed: 1 clip, 26.0s')).toBeTruthy())
+    await waitFor(() =>
+      expect(screen.getByText('Delivery check passed: 1 clip, 26.0s')).toBeTruthy()
+    )
     expect(verifyOpenCutExportManifest).toHaveBeenCalledWith('20260708-opencut-fixture', {
       session_id: '20260708-opencut-fixture',
       exported_at: expect.any(String),
@@ -328,7 +330,9 @@ describe('EditorPage', () => {
     expect(screen.getByText('p03-c01-video')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Run Export QA' }))
 
-    await waitFor(() => expect(screen.getByText('QA passed: 2 clips, 54.0s')).toBeTruthy())
+    await waitFor(() =>
+      expect(screen.getByText('Delivery check passed: 2 clips, 54.0s')).toBeTruthy()
+    )
     expect(verifyOpenCutExportManifest).toHaveBeenCalledWith('20260708-opencut-fixture', {
       session_id: '20260708-opencut-fixture',
       exported_at: expect.any(String),
@@ -434,7 +438,7 @@ describe('EditorPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Render and upload p02-c01' }))
 
     await waitFor(() =>
-      expect(screen.getByText('Rendered and uploaded p02-c01: 4 bytes')).toBeTruthy()
+      expect(screen.getByText('Rendered p02-c01: 4 bytes')).toBeTruthy()
     )
     expect(getCaptionCues).toHaveBeenCalledWith('20260708-opencut-fixture', 'p02-c01')
     expect(browserRendererMocks.renderClipExport).toHaveBeenCalledWith({

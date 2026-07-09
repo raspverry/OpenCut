@@ -95,7 +95,7 @@ describe('ExportQaPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Refresh Exports' }))
 
     await waitFor(() => expect(input.value).toBe('exports/p01-c01.mp4'))
-    expect(screen.getByRole('status').textContent).toBe('Export paths refreshed: 1 clip')
+    expect(screen.getByRole('status').textContent).toBe('Outputs refreshed: 1 clip')
     expect(draftOpenCutExportManifest).toHaveBeenCalledWith('20260708-opencut-fixture', {
       clip_ids: ['p01-c01'],
     })
@@ -251,7 +251,7 @@ describe('ExportQaPanel', () => {
     expect(
       (screen.getByLabelText('Exported video file for p01-c01') as HTMLInputElement).value
     ).toBe('final/p01-c01.mp4')
-    expect(screen.getByRole('status').textContent).toBe('Rendered and uploaded p01-c01: 3 bytes')
+    expect(screen.getByRole('status').textContent).toBe('Rendered p01-c01: 3 bytes')
   })
 })
 

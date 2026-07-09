@@ -37,35 +37,50 @@ export function EditorShell({ timelineSpec, sidecarClient }: EditorShellProps) {
   }, [browserSourceFile, client, sessionId])
 
   return (
-    <main className="dark h-screen overflow-auto bg-[#05070a] font-sans text-slate-100">
+    <main className="dark h-screen overflow-hidden bg-[#05070a] font-sans text-slate-100">
       <section
         aria-label="OpenCut AI editor workspace"
         className="flex h-screen min-h-0 flex-col"
       >
-        <header className="flex h-10 shrink-0 items-center justify-between border-b border-[#242b36] bg-[#0b0e13] px-3">
-          <div className="flex min-w-0 items-center gap-4">
-            <h1 className="text-sm font-semibold tracking-tight text-slate-100">
-              OpenCut
-            </h1>
-            <nav aria-label="Editor mode" className="hidden items-center gap-1 text-xs md:flex">
-              <span className="border-b border-blue-400 px-2 py-2 font-medium text-slate-100">
+        <header className="flex h-12 shrink-0 items-center justify-between border-b border-[#252a34] bg-[#0b0d12] px-3">
+          <div className="flex min-w-0 items-center gap-5">
+            <div className="flex min-w-0 items-center gap-2">
+              <span
+                aria-hidden="true"
+                className="flex size-6 items-center justify-center rounded-[5px] bg-[#f4f4f5] text-[0.6875rem] font-bold text-[#05070a]"
+              >
+                OC
+              </span>
+              <div className="min-w-0">
+                <h1 className="text-sm font-semibold leading-4 tracking-tight text-slate-100">
+                  OpenCut
+                </h1>
+                <p className="hidden truncate text-[0.625rem] font-medium uppercase tracking-[0.12em] text-slate-500 sm:block">
+                  AI shorts workspace
+                </p>
+              </div>
+            </div>
+            <nav
+              aria-label="Editor mode"
+              className="hidden h-8 items-center rounded-[6px] border border-[#2b303b] bg-[#11151d] p-0.5 text-xs md:flex"
+            >
+              <span className="rounded-[4px] bg-[#f4f4f5] px-3 py-1.5 font-medium text-[#05070a]">
                 Edit
               </span>
-              <span className="px-2 py-2 text-slate-500">Captions</span>
-              <span className="px-2 py-2 text-slate-500">Export</span>
+              <span className="px-3 py-1.5 font-medium text-slate-500">Captions</span>
+              <span className="px-3 py-1.5 font-medium text-slate-500">Deliver</span>
             </nav>
           </div>
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="hidden text-[0.6875rem] font-medium uppercase tracking-[0.12em] text-slate-500 sm:inline">
-              Editor
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="hidden rounded-[4px] border border-[#2b303b] bg-[#11151d] px-2 py-1 text-[0.625rem] font-semibold uppercase tracking-[0.1em] text-slate-400 md:inline-flex">
+              Local sidecar
             </span>
-            <span className="h-3 w-px bg-slate-700" aria-hidden="true" />
-            <span className="truncate text-[0.6875rem] font-medium text-slate-300">
+            <span className="max-w-[280px] truncate rounded-[4px] bg-[#161b24] px-2 py-1 text-[0.6875rem] font-medium text-slate-300">
               Session {sessionId}
             </span>
           </div>
         </header>
-        <div className="grid min-h-0 min-w-[1080px] flex-1 grid-cols-[260px_minmax(520px,1fr)_360px] grid-rows-[minmax(0,1fr)_260px_28px] gap-px bg-[#242b36] xl:grid-cols-[300px_minmax(640px,1fr)_380px]">
+        <div className="grid min-h-0 min-w-[1180px] flex-1 grid-cols-[280px_minmax(640px,1fr)_420px] grid-rows-[minmax(0,1fr)_300px_30px] gap-px bg-[#252a34] xl:grid-cols-[300px_minmax(720px,1fr)_440px]">
           <div data-editor-zone="media-bin" className="row-span-2 min-h-0 overflow-hidden">
             <SourceMediaPanel
               client={client}
@@ -84,11 +99,13 @@ export function EditorShell({ timelineSpec, sidecarClient }: EditorShellProps) {
             data-editor-zone="inspector"
             className="row-span-2 flex min-h-0 flex-col overflow-hidden bg-[#10141c]"
           >
-            <div className="flex h-9 shrink-0 items-center justify-between border-b border-[#242b36] bg-[#0f141b] px-3">
+            <div className="flex h-10 shrink-0 items-center justify-between border-b border-[#252a34] bg-[#0f131a] px-3">
               <h2 className="text-xs font-semibold tracking-tight text-slate-200">Inspector</h2>
-              <span className="text-[0.625rem] font-medium uppercase tracking-[0.1em] text-slate-500">
-                AI Review
-              </span>
+              <div className="flex items-center gap-1 rounded-[5px] border border-[#2b303b] bg-[#0a0d13] p-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.08em]">
+                <span className="rounded-[3px] bg-blue-500 px-2 py-1 text-white">AI</span>
+                <span className="px-2 py-1 text-slate-500">Clip</span>
+                <span className="px-2 py-1 text-slate-500">Export</span>
+              </div>
             </div>
             <AiShortsPanel
               sessionId={sessionId}
@@ -108,7 +125,7 @@ export function EditorShell({ timelineSpec, sidecarClient }: EditorShellProps) {
           </div>
           <div
             data-editor-zone="statusbar"
-            className="col-span-3 flex min-h-0 items-center justify-between gap-4 bg-[#0b0e13] px-3 text-[0.625rem] font-medium text-slate-500"
+            className="col-span-3 flex min-h-0 items-center justify-between gap-4 bg-[#0b0d12] px-3 text-[0.625rem] font-medium text-slate-500"
           >
             <span className="uppercase tracking-[0.1em]">Ready</span>
             <span className="truncate">{sourceFile}</span>
