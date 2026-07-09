@@ -54,6 +54,8 @@ const sourceAsset: MediaAsset = {
 	id: "source-video",
 	name: "source.mp4",
 	type: "video",
+	width: 1920,
+	height: 1080,
 	duration: 100,
 	size: 1024,
 	lastModified: 0,
@@ -82,6 +84,10 @@ describe("buildAiShortsInsertPlanFromSpec", () => {
 			trimEnd: 70,
 			sourceDuration: 100,
 			volume: 1,
+			transform: {
+				scaleX: 3.1604938271604937,
+				scaleY: 3.1604938271604937,
+			},
 		});
 	});
 
@@ -100,6 +106,7 @@ describe("buildAiShortsInsertPlanFromSpec", () => {
 			content: "半顔だけ塗ってみます",
 			startTime: 5,
 			duration: 3,
+			fontSize: 2.7,
 			fontFamily: "Noto Sans CJK JP",
 			wordTimings: [
 				{
@@ -140,8 +147,26 @@ describe("buildAiShortsInsertPlanFromSpec", () => {
 			content: "TikTok Shopでチェック",
 			startTime: 22,
 			duration: 3,
+			fontSize: 2.5,
 			fontFamily: "Noto Sans JP",
 		});
+	});
+
+	test("uses OpenCut text size units instead of pixel-sized subtitle values", () => {
+		const plan = buildAiShortsInsertPlanFromSpec({
+			clip: baseClip,
+			sourceAsset,
+			startTime: 0,
+			includeText: true,
+			captionCues: cueFile,
+		});
+
+		const textElements = plan.elements.filter(
+			(element) => element.type === "text",
+		);
+		expect(textElements.map((element) => element.fontSize)).toEqual([
+			3.2, 2.7, 2.7, 2.5,
+		]);
 	});
 
 	test("can insert only the video element and keep captions user-controlled", () => {

@@ -5,6 +5,7 @@ import { buildTextElement } from "@/lib/timeline/element-utils";
 import type { CaptionCueFile, TimelineClip } from "./types";
 
 const MIN_CLIP_SECONDS = 0.1;
+const SHORTS_CANVAS_SIZE = { width: 1080, height: 1920 };
 
 export type AiShortsInsertPlan = {
 	elements: CreateTimelineElement[];
@@ -46,7 +47,7 @@ export function buildAiShortsInsertPlanFromSpec({
 		sourceDuration,
 		muted: false,
 		hidden: false,
-		transform: copyDefaultTransform(),
+		transform: buildCoverTransform({ sourceAsset }),
 		opacity: DEFAULTS.element.opacity,
 		blendMode: DEFAULTS.element.blendMode,
 		volume: 1,
@@ -62,15 +63,15 @@ export function buildAiShortsInsertPlanFromSpec({
 						name: `${clip.clip_id} hook`,
 						content: hookText,
 						duration: Math.min(3, duration),
-						fontSize: 58,
+						fontSize: 3.2,
 						fontFamily: "Noto Sans JP",
 						color: "#ffffff",
 						background: {
 							enabled: true,
 							color: "rgba(0, 0, 0, 0.72)",
 							cornerRadius: 18,
-							paddingX: 28,
-							paddingY: 14,
+							paddingX: 100,
+							paddingY: 60,
 						},
 						textAlign: "center",
 						fontWeight: "bold",
@@ -104,23 +105,27 @@ export function buildAiShortsInsertPlanFromSpec({
 							name: cue.cue_id,
 							content: captionText,
 							duration: cueDuration,
-							fontSize: 46,
+							fontSize: 2.7,
 							fontFamily,
 							color: "#ffffff",
 							background: {
 								enabled: true,
 								color: "rgba(0, 0, 0, 0.68)",
 								cornerRadius: 12,
-								paddingX: 22,
-								paddingY: 10,
+								paddingX: 90,
+								paddingY: 55,
 							},
 							textAlign: "center",
 							fontWeight: "bold",
 							lineHeight: 1.16,
 							wordTimings: cue.words.map((word) => ({
 								word: word.w,
-								startTime: roundTiming(clamp(word.start, cueStart, cueEnd) - cueStart),
-								endTime: roundTiming(clamp(word.end, cueStart, cueEnd) - cueStart),
+								startTime: roundTiming(
+									clamp(word.start, cueStart, cueEnd) - cueStart,
+								),
+								endTime: roundTiming(
+									clamp(word.end, cueStart, cueEnd) - cueStart,
+								),
 								confidence: word.confidence,
 							})),
 							transform: {
@@ -144,15 +149,15 @@ export function buildAiShortsInsertPlanFromSpec({
 					name: `${clip.clip_id} cta`,
 					content: ctaText(captionCues?.language),
 					duration: ctaDuration,
-					fontSize: 44,
+					fontSize: 2.5,
 					fontFamily: "Noto Sans JP",
 					color: "#ffffff",
 					background: {
 						enabled: true,
 						color: "rgba(0, 0, 0, 0.72)",
 						cornerRadius: 16,
-						paddingX: 24,
-						paddingY: 12,
+						paddingX: 90,
+						paddingY: 55,
 					},
 					textAlign: "center",
 					fontWeight: "bold",
@@ -184,7 +189,11 @@ function getSourceDuration({
 	if (Number.isFinite(sourceAsset.duration) && sourceAsset.duration) {
 		return Math.max(MIN_CLIP_SECONDS, sourceAsset.duration);
 	}
-	return Math.max(MIN_CLIP_SECONDS, clip.source_range_sec[1], clip.source_range_sec[0]);
+	return Math.max(
+		MIN_CLIP_SECONDS,
+		clip.source_range_sec[1],
+		clip.source_range_sec[0],
+	);
 }
 
 function copyDefaultTransform() {
@@ -194,12 +203,38 @@ function copyDefaultTransform() {
 	};
 }
 
+function buildCoverTransform({ sourceAsset }: { sourceAsset: MediaAsset }) {
+	const transform = copyDefaultTransform();
+	const sourceWidth = sourceAsset.width ?? 0;
+	const sourceHeight = sourceAsset.height ?? 0;
+	if (sourceWidth <= 0 || sourceHeight <= 0) return transform;
+
+	const containScale = Math.min(
+		SHORTS_CANVAS_SIZE.width / sourceWidth,
+		SHORTS_CANVAS_SIZE.height / sourceHeight,
+	);
+	const coverScale = Math.max(
+		SHORTS_CANVAS_SIZE.width / sourceWidth,
+		SHORTS_CANVAS_SIZE.height / sourceHeight,
+	);
+	if (containScale <= 0) return transform;
+
+	const scale = coverScale / containScale;
+	return {
+		...transform,
+		scaleX: scale,
+		scaleY: scale,
+	};
+}
+
 function clamp(value: number, min: number, max: number) {
 	if (max < min) return min;
 	return Math.min(Math.max(value, min), max);
 }
 
-function captionSafeAreaY(anchor: CaptionCueFile["style"]["safe_area"]["anchor"]) {
+function captionSafeAreaY(
+	anchor: CaptionCueFile["style"]["safe_area"]["anchor"],
+) {
 	if (anchor === "top") return -500;
 	if (anchor === "center") return 0;
 	return 500;

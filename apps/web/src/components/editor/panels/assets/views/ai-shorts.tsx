@@ -39,6 +39,7 @@ import { Target } from "lucide-react";
 import { toast } from "sonner";
 
 type LoadState = "idle" | "loading" | "ingesting" | "analyzing" | "inserting";
+const TIKTOK_CANVAS_SIZE = { width: 1080, height: 1920 };
 
 export function AiShortsView() {
 	const editor = useEditor();
@@ -87,7 +88,9 @@ export function AiShortsView() {
 		}
 	}, [selectedMediaId, videoAssets]);
 
-	const selectedAsset = videoAssets.find((asset) => asset.id === selectedMediaId);
+	const selectedAsset = videoAssets.find(
+		(asset) => asset.id === selectedMediaId,
+	);
 	const isBusy = state !== "idle";
 	const sourceMatchesSpec = sourceMatchesTimelineSpec({
 		sourceAsset: selectedAsset,
@@ -157,7 +160,10 @@ export function AiShortsView() {
 		setState("loading");
 		try {
 			const products = parseProductCatalog(catalogText);
-			const config = await sidecar.updateProducts(normalizedSessionId, products);
+			const config = await sidecar.updateProducts(
+				normalizedSessionId,
+				products,
+			);
 			setCatalogText(formatProductCatalog(config.products));
 			toast.success(`Saved ${config.products.length} products`);
 		} catch (error) {
@@ -295,6 +301,39 @@ export function AiShortsView() {
 		}
 	};
 
+	const createSceneForClip = async (clip: TimelineClip) => {
+		const normalizedSessionId = sessionId.trim();
+		if (!normalizedSessionId) {
+			toast.error("Enter a sidecar session id");
+			return;
+		}
+		setState("inserting");
+		try {
+			const sceneId = await editor.scenes.createScene({
+				name: clip.clip_id,
+				isMain: false,
+			});
+			await editor.scenes.switchToScene({ sceneId });
+			await insertClip(clip, 0);
+			await editor.project.updateSettings({
+				settings: {
+					canvasSize: TIKTOK_CANVAS_SIZE,
+					canvasSizeMode: "preset",
+				},
+				pushHistory: false,
+			});
+			setExportTarget({
+				sessionId: normalizedSessionId,
+				clipId: clip.clip_id,
+			});
+			toast.success(`Created scene for ${clip.clip_id}`);
+		} catch (error) {
+			toast.error(errorMessage(error));
+		} finally {
+			setState("idle");
+		}
+	};
+
 	const insertAll = async () => {
 		if (clips.length === 0) return;
 		setState("inserting");
@@ -312,7 +351,10 @@ export function AiShortsView() {
 		}
 	};
 
-	const uploadExportArtifact = async (clip: TimelineClip, file: File | null) => {
+	const uploadExportArtifact = async (
+		clip: TimelineClip,
+		file: File | null,
+	) => {
 		if (!file) return;
 		const normalizedSessionId = sessionId.trim();
 		if (!normalizedSessionId) {
@@ -582,7 +624,9 @@ export function AiShortsView() {
 						<Checkbox
 							id="ai-shorts-refresh-analysis"
 							checked={refreshAnalysis}
-							onCheckedChange={(checked) => setRefreshAnalysis(checked === true)}
+							onCheckedChange={(checked) =>
+								setRefreshAnalysis(checked === true)
+							}
 						/>
 						<Label
 							htmlFor="ai-shorts-refresh-analysis"
@@ -645,7 +689,9 @@ export function AiShortsView() {
 							size="sm"
 							variant="outline"
 							onClick={runExportQa}
-							disabled={Object.keys(uploadedExportArtifacts).length === 0 || isBusy}
+							disabled={
+								Object.keys(uploadedExportArtifacts).length === 0 || isBusy
+							}
 						>
 							Run QA
 						</Button>
@@ -669,6 +715,7 @@ export function AiShortsView() {
 							insertDisabled={!sourceMatchesSpec || isBusy}
 							uploadDisabled={isBusy}
 							onInsert={() => insertOne(clip)}
+							onCreateScene={() => createSceneForClip(clip)}
 							onUseAsExportTarget={() => {
 								const normalizedSessionId = sessionId.trim();
 								if (!normalizedSessionId) {
@@ -679,7 +726,9 @@ export function AiShortsView() {
 									sessionId: normalizedSessionId,
 									clipId: clip.clip_id,
 								});
-								toast.success(`${clip.clip_id} is the OpenCut export QA target`);
+								toast.success(
+									`${clip.clip_id} is the OpenCut export QA target`,
+								);
 							}}
 							onUploadExport={(file) => uploadExportArtifact(clip, file)}
 						/>
@@ -697,6 +746,7 @@ function TimelineClipCard({
 	insertDisabled,
 	uploadDisabled,
 	onInsert,
+	onCreateScene,
 	onUseAsExportTarget,
 	onUploadExport,
 }: {
@@ -706,6 +756,7 @@ function TimelineClipCard({
 	insertDisabled: boolean;
 	uploadDisabled: boolean;
 	onInsert: () => void;
+	onCreateScene: () => void;
 	onUseAsExportTarget: () => void;
 	onUploadExport: (file: File | null) => void;
 }) {
@@ -740,6 +791,15 @@ function TimelineClipCard({
 					</Button>
 				</div>
 			</div>
+			<Button
+				size="sm"
+				variant="secondary"
+				className="w-full"
+				onClick={onCreateScene}
+				disabled={insertDisabled}
+			>
+				Create scene
+			</Button>
 			{clip.reason && (
 				<p className="text-muted-foreground line-clamp-2 text-xs">
 					{clip.reason}
@@ -790,7 +850,9 @@ function Field({
 	);
 }
 
-function isVideoAsset(asset: MediaAsset): asset is MediaAsset & { type: "video" } {
+function isVideoAsset(
+	asset: MediaAsset,
+): asset is MediaAsset & { type: "video" } {
 	return asset.type === "video" && !asset.ephemeral;
 }
 
