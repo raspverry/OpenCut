@@ -177,4 +177,82 @@ describe("createSidecarClient", () => {
 			"http://sidecar.test/api/sessions/s01/caption-cues/p01%2Fc01",
 		]);
 	});
+
+	test("uploads an OpenCut export artifact for one clip", async () => {
+		const calls: Array<{ url: string; init?: RequestInit }> = [];
+		const file = new File(["export"], "p01-c01.mp4", { type: "video/mp4" });
+		const client = createSidecarClient({
+			baseUrl: "http://sidecar.test",
+			fetcher: async (input, init) => {
+				calls.push({ url: String(input), init });
+				return Response.json(
+					{
+						session_id: "s01",
+						clip_id: "p01-c01",
+						video_file: "final/p01-c01.mp4",
+						byte_size: 6,
+					},
+					{ status: 201 },
+				);
+			},
+		});
+
+		const result = await client.uploadOpenCutExportArtifact(
+			"s01",
+			"p01-c01",
+			file,
+		);
+		const headers = calls[0].init?.headers as Record<string, string>;
+
+		expect(result.video_file).toBe("final/p01-c01.mp4");
+		expect(calls[0].url).toBe(
+			"http://sidecar.test/api/sessions/s01/qa/opencut-export/artifacts/p01-c01",
+		);
+		expect(calls[0].init?.method).toBe("POST");
+		expect(calls[0].init?.body).toBe(file);
+		expect(headers["content-type"]).toBe("video/mp4");
+	});
+
+	test("drafts and verifies an OpenCut export manifest", async () => {
+		const calls: Array<{ url: string; init?: RequestInit }> = [];
+		const manifest = {
+			session_id: "s01",
+			exported_at: "2026-07-09T12:00:00+09:00",
+			fingerprint:
+				"sha256:1111111111111111111111111111111111111111111111111111111111111111",
+			clips: [{ clip_id: "p01-c01", video_file: "final/p01-c01.mp4" }],
+		};
+		const client = createSidecarClient({
+			baseUrl: "http://sidecar.test",
+			fetcher: async (input, init) => {
+				calls.push({ url: String(input), init });
+				if (String(input).endsWith("/manifest/draft")) {
+					return Response.json({ manifest, missing_files: [] });
+				}
+				return Response.json({
+					session_id: "s01",
+					clip_count: 1,
+					total_duration_sec: 29.3,
+					by_product: { gen: 1 },
+				});
+			},
+		});
+
+		const draft = await client.draftOpenCutExportManifest("s01", ["p01-c01"]);
+		const summary = await client.verifyOpenCutExportManifest(
+			"s01",
+			draft.manifest,
+		);
+
+		expect(draft.missing_files).toEqual([]);
+		expect(summary.clip_count).toBe(1);
+		expect(calls[0].url).toBe(
+			"http://sidecar.test/api/sessions/s01/qa/opencut-export/manifest/draft",
+		);
+		expect(calls[0].init?.body).toBe(JSON.stringify({ clip_ids: ["p01-c01"] }));
+		expect(calls[1].url).toBe(
+			"http://sidecar.test/api/sessions/s01/qa/opencut-export/manifest",
+		);
+		expect(calls[1].init?.body).toBe(JSON.stringify(manifest));
+	});
 });

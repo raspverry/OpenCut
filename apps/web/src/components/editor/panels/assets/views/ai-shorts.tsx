@@ -28,6 +28,8 @@ import { sourceMatchesTimelineSpec } from "@/lib/ai-shorts/source-match";
 import { buildAiShortsInsertPlanFromSpec } from "@/lib/ai-shorts/timeline";
 import type {
 	LanguageCode,
+	OpenCutExportArtifact,
+	OpenCutExportQaResponse,
 	SidecarProvider,
 	SourceLanguageCode,
 	TimelineClip,
@@ -62,6 +64,11 @@ export function AiShortsView() {
 	const [refreshAnalysis, setRefreshAnalysis] = useState(false);
 	const [timelineSpec, setTimelineSpec] = useState<TimelineSpec | null>(null);
 	const [clips, setClips] = useState<TimelineClip[]>([]);
+	const [uploadedExportArtifacts, setUploadedExportArtifacts] = useState<
+		Record<string, OpenCutExportArtifact>
+	>({});
+	const [exportQaSummary, setExportQaSummary] =
+		useState<OpenCutExportQaResponse | null>(null);
 	const [state, setState] = useState<LoadState>("idle");
 
 	useEffect(() => {
@@ -81,6 +88,8 @@ export function AiShortsView() {
 		setTimelineSpec(spec);
 		setClips(spec.clips);
 		setLanguage(spec.language);
+		setUploadedExportArtifacts({});
+		setExportQaSummary(null);
 	};
 
 	const fetchTimelineSpec = async (normalizedSessionId: string) => {
@@ -287,6 +296,69 @@ export function AiShortsView() {
 				nextStartTime += duration;
 			}
 			toast.success(`Inserted ${clips.length} clips`);
+		} catch (error) {
+			toast.error(errorMessage(error));
+		} finally {
+			setState("idle");
+		}
+	};
+
+	const uploadExportArtifact = async (clip: TimelineClip, file: File | null) => {
+		if (!file) return;
+		const normalizedSessionId = sessionId.trim();
+		if (!normalizedSessionId) {
+			toast.error("Enter a sidecar session id");
+			return;
+		}
+		setState("loading");
+		try {
+			const artifact = await sidecar.uploadOpenCutExportArtifact(
+				normalizedSessionId,
+				clip.clip_id,
+				file,
+			);
+			setUploadedExportArtifacts((current) => ({
+				...current,
+				[clip.clip_id]: artifact,
+			}));
+			setExportQaSummary(null);
+			toast.success(`Uploaded ${clip.clip_id} export`);
+		} catch (error) {
+			toast.error(errorMessage(error));
+		} finally {
+			setState("idle");
+		}
+	};
+
+	const runExportQa = async () => {
+		const normalizedSessionId = sessionId.trim();
+		if (!normalizedSessionId) {
+			toast.error("Enter a sidecar session id");
+			return;
+		}
+		const clipIds = clips
+			.map((clip) => clip.clip_id)
+			.filter((clipId) => uploadedExportArtifacts[clipId]);
+		if (clipIds.length === 0) {
+			toast.error("Upload at least one OpenCut export first");
+			return;
+		}
+		setState("loading");
+		try {
+			const draft = await sidecar.draftOpenCutExportManifest(
+				normalizedSessionId,
+				clipIds,
+			);
+			if (draft.missing_files.length > 0) {
+				toast.error(`Missing exports: ${draft.missing_files.join(", ")}`);
+				return;
+			}
+			const summary = await sidecar.verifyOpenCutExportManifest(
+				normalizedSessionId,
+				draft.manifest,
+			);
+			setExportQaSummary(summary);
+			toast.success(`QA passed for ${summary.clip_count} clips`);
 		} catch (error) {
 			toast.error(errorMessage(error));
 		} finally {
@@ -554,6 +626,25 @@ export function AiShortsView() {
 						does not match {formatTime(timelineSpec.source_video.duration_sec)}.
 					</p>
 				)}
+				{clips.length > 0 && (
+					<div className="flex items-center justify-between gap-2 rounded-md border bg-accent/25 p-2">
+						<p className="text-muted-foreground text-xs">
+							Export QA {Object.keys(uploadedExportArtifacts).length}/
+							{clips.length}
+							{exportQaSummary
+								? ` · passed ${exportQaSummary.clip_count} clips`
+								: ""}
+						</p>
+						<Button
+							size="sm"
+							variant="outline"
+							onClick={runExportQa}
+							disabled={Object.keys(uploadedExportArtifacts).length === 0 || isBusy}
+						>
+							Run QA
+						</Button>
+					</div>
+				)}
 				{clips.length === 0 ? (
 					<div className="text-muted-foreground rounded-md border border-dashed p-4 text-sm">
 						Load a timeline spec or analyze a sidecar session to create editable
@@ -564,8 +655,11 @@ export function AiShortsView() {
 						<TimelineClipCard
 							key={clip.clip_id}
 							clip={clip}
-							disabled={!sourceMatchesSpec || isBusy}
+							artifact={uploadedExportArtifacts[clip.clip_id]}
+							insertDisabled={!sourceMatchesSpec || isBusy}
+							uploadDisabled={isBusy}
 							onInsert={() => insertOne(clip)}
+							onUploadExport={(file) => uploadExportArtifact(clip, file)}
 						/>
 					))
 				)}
@@ -576,12 +670,18 @@ export function AiShortsView() {
 
 function TimelineClipCard({
 	clip,
-	disabled,
+	artifact,
+	insertDisabled,
+	uploadDisabled,
 	onInsert,
+	onUploadExport,
 }: {
 	clip: TimelineClip;
-	disabled: boolean;
+	artifact?: OpenCutExportArtifact;
+	insertDisabled: boolean;
+	uploadDisabled: boolean;
 	onInsert: () => void;
+	onUploadExport: (file: File | null) => void;
 }) {
 	return (
 		<div className="space-y-2 rounded-md border bg-background p-2">
@@ -593,7 +693,12 @@ function TimelineClipCard({
 						score {Math.round(clip.score)}
 					</div>
 				</div>
-				<Button size="sm" variant="outline" onClick={onInsert} disabled={disabled}>
+				<Button
+					size="sm"
+					variant="outline"
+					onClick={onInsert}
+					disabled={insertDisabled}
+				>
 					Insert
 				</Button>
 			</div>
@@ -607,6 +712,23 @@ function TimelineClipCard({
 				readOnly
 				className="min-h-14 bg-accent/40 text-xs"
 			/>
+			<div className="space-y-1">
+				<Input
+					type="file"
+					accept="video/mp4,video/webm"
+					className="h-8 text-xs"
+					disabled={uploadDisabled}
+					onChange={(event) => {
+						onUploadExport(event.target.files?.[0] ?? null);
+						event.currentTarget.value = "";
+					}}
+				/>
+				{artifact && (
+					<p className="text-muted-foreground text-xs">
+						Uploaded {artifact.video_file} · {formatBytes(artifact.byte_size)}
+					</p>
+				)}
+			</div>
 		</div>
 	);
 }
@@ -665,6 +787,11 @@ function formatProbe(probe: {
 	orientation: string;
 }) {
 	return `${probe.orientation} ${probe.width}x${probe.height} ${formatTime(probe.duration_sec)}`;
+}
+
+function formatBytes(bytes: number) {
+	if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function errorMessage(error: unknown) {

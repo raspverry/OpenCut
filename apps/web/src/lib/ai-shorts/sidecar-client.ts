@@ -3,6 +3,10 @@ import type {
 	CaptionCueFile,
 	IngestResponse,
 	LanguageCode,
+	OpenCutExportArtifact,
+	OpenCutExportManifest,
+	OpenCutExportManifestDraft,
+	OpenCutExportQaResponse,
 	Product,
 	SessionConfig,
 	SessionResponse,
@@ -111,6 +115,42 @@ export function createSidecarClient(
 			return requestJson<CaptionCueFile>(
 				fetcher,
 				`${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/caption-cues/${encodeURIComponent(clipId)}`,
+			);
+		},
+		uploadOpenCutExportArtifact(sessionId: string, clipId: string, file: File) {
+			return requestJson<OpenCutExportArtifact>(
+				fetcher,
+				`${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/qa/opencut-export/artifacts/${encodeURIComponent(clipId)}`,
+				{
+					method: "POST",
+					body: file,
+					headers: {
+						"content-type": file.type || "application/octet-stream",
+					},
+				},
+			);
+		},
+		draftOpenCutExportManifest(sessionId: string, clipIds: string[]) {
+			return requestJson<OpenCutExportManifestDraft>(
+				fetcher,
+				`${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/qa/opencut-export/manifest/draft`,
+				{
+					method: "POST",
+					body: JSON.stringify({ clip_ids: clipIds }),
+				},
+			);
+		},
+		verifyOpenCutExportManifest(
+			sessionId: string,
+			manifest: OpenCutExportManifest,
+		) {
+			return requestJson<OpenCutExportQaResponse>(
+				fetcher,
+				`${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/qa/opencut-export/manifest`,
+				{
+					method: "POST",
+					body: JSON.stringify(manifest),
+				},
 			);
 		},
 	};

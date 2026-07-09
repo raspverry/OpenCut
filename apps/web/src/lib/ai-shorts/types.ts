@@ -132,3 +132,34 @@ export type AnalyzeResponse = {
 	max_clip_sec: number;
 	candidates: Candidates;
 };
+
+export type OpenCutExportManifestClip = {
+	clip_id: string;
+	video_file: string;
+};
+
+export type OpenCutExportManifest = {
+	session_id: string;
+	exported_at: string;
+	fingerprint: string;
+	clips: OpenCutExportManifestClip[];
+};
+
+export type OpenCutExportManifestDraft = {
+	manifest: OpenCutExportManifest;
+	missing_files: string[];
+};
+
+export type OpenCutExportArtifact = {
+	session_id: string;
+	clip_id: string;
+	video_file: string;
+	byte_size: number;
+};
+
+export type OpenCutExportQaResponse = {
+	session_id: string;
+	clip_count: number;
+	total_duration_sec: number;
+	by_product: Record<string, number>;
+};
