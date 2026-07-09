@@ -42,6 +42,11 @@ export function CandidateList({ clips, onApplyClip }: CandidateListProps) {
             </div>
           </dl>
           <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-300">{clip.reason}</p>
+          {transcriptPreview(clip) ? (
+            <p className="mt-1 line-clamp-2 border-l border-slate-700 pl-2 text-xs leading-5 text-slate-400">
+              {transcriptPreview(clip)}
+            </p>
+          ) : null}
           {captionPreview(clip) ? (
             <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
               {captionPreview(clip)}
@@ -73,6 +78,13 @@ function sourceRange(clip: DisplayClip): [number, number] {
 function captionPreview(clip: DisplayClip): string | null {
   if ('caption' in clip) {
     return clip.caption
+  }
+  return null
+}
+
+function transcriptPreview(clip: DisplayClip): string | null {
+  if ('transcript_preview' in clip) {
+    return clip.transcript_preview ?? null
   }
   return null
 }

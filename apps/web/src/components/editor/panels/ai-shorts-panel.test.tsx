@@ -72,6 +72,7 @@ describe('AiShortsPanel', () => {
     await waitFor(() => expect(screen.getByText('2 candidates loaded')).toBeTruthy())
     expect(screen.getByText('p01-c01')).toBeTruthy()
     expect(screen.getByText('p01-c02')).toBeTruthy()
+    expect(screen.getAllByText('このモイストグロウセラムを半顔だけ塗ってみます').length).toBe(2)
     expect(getCandidates).toHaveBeenCalledWith('20260708-sale')
   })
 
@@ -171,6 +172,7 @@ function analyzeResponse(count: number): AnalyzeResponse {
         reason: '価格と実演が近い',
         hook_text: 'このツヤ見て',
         caption: '新作セラムをチェック',
+        transcript_preview: 'このモイストグロウセラムを半顔だけ塗ってみます',
         hashtags: ['コスメ'],
       })),
     },

@@ -48,6 +48,7 @@ export type CandidateClip = {
   reason: string
   hook_text: string
   caption: string
+  transcript_preview?: string
   hashtags: string[]
 }
 
