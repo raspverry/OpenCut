@@ -147,6 +147,34 @@ export type OpenCutExportQaResponse = {
   by_product: Record<string, number>
 }
 
+export type ClipStateStatus = 'pending' | 'approved' | 'rejected'
+
+export type ClipState = {
+  clip_id: string
+  status: ClipStateStatus
+  rendered_at: string
+  render_params_hash: string
+  trim_offset_start: number
+  trim_offset_end: number
+  caption: string
+  hook_text: string
+  review_note: string
+  review_tags: string[]
+}
+
+export type ClipStateUpdate = Partial<
+  Pick<
+    ClipState,
+    | 'status'
+    | 'caption'
+    | 'hook_text'
+    | 'trim_offset_start'
+    | 'trim_offset_end'
+    | 'review_note'
+    | 'review_tags'
+  >
+>
+
 export type CaptionCueFile = {
   clip_id: string
   language: LanguageCode

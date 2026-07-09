@@ -10,45 +10,49 @@ type CandidateListProps = {
 export function CandidateList({ clips, onApplyClip }: CandidateListProps) {
   if (clips.length === 0) {
     return (
-      <div className="mt-4 rounded-md border border-dashed bg-muted/20 px-3 py-4 text-xs text-muted-foreground">
+      <div className="mt-3 rounded-md border border-dashed border-slate-700 bg-slate-950/40 px-3 py-4 text-xs text-slate-400">
         Run Analyze to generate candidates
       </div>
     )
   }
 
   return (
-    <div className="mt-4 space-y-3">
+    <div className="mt-3 divide-y divide-slate-800 overflow-hidden rounded-md border border-slate-800 bg-slate-950/25">
       {clips.map((clip) => (
         <article
-          className="rounded-md border bg-background p-3 shadow-sm shadow-black/5 transition-colors hover:bg-muted/20"
+          className="px-3 py-2.5 transition-colors hover:bg-slate-900/80"
           key={clip.clip_id}
         >
           <div className="flex items-center justify-between gap-3">
-            <h3 className="text-sm font-semibold">{clip.clip_id}</h3>
-            <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[0.6875rem] font-medium">
+            <h3 className="truncate text-xs font-semibold text-slate-100">{clip.clip_id}</h3>
+            <span className="shrink-0 rounded-sm bg-blue-500/15 px-1.5 py-0.5 text-[0.625rem] font-medium text-blue-200">
               Score {clip.score}
             </span>
           </div>
-          <dl className="mt-3 space-y-1 text-xs">
-            <div className="flex justify-between gap-3">
-              <dt className="text-muted-foreground">Product</dt>
-              <dd className="font-medium">{clip.product_id ?? 'general'}</dd>
+          <dl className="mt-2 grid grid-cols-2 gap-2 text-[0.6875rem]">
+            <div className="min-w-0">
+              <dt className="text-slate-500">Product</dt>
+              <dd className="truncate font-medium text-slate-300">
+                {clip.product_id ?? 'general'}
+              </dd>
             </div>
-            <div className="flex justify-between gap-3">
-              <dt className="text-muted-foreground">Source</dt>
-              <dd className="font-medium">{formatRange(sourceRange(clip))}</dd>
+            <div className="min-w-0">
+              <dt className="text-slate-500">Source</dt>
+              <dd className="truncate font-medium text-slate-300">{formatRange(sourceRange(clip))}</dd>
             </div>
           </dl>
-          <p className="mt-3 text-xs leading-5">{clip.reason}</p>
+          <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-300">{clip.reason}</p>
           {captionPreview(clip) ? (
-            <p className="mt-2 text-xs leading-5 text-muted-foreground">{captionPreview(clip)}</p>
+            <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
+              {captionPreview(clip)}
+            </p>
           ) : null}
           {onApplyClip ? (
             <button
               type="button"
               aria-label={`Apply ${clip.clip_id}`}
               onClick={() => onApplyClip(clip.clip_id)}
-              className="mt-3 inline-flex h-7 items-center rounded-md border bg-background px-2.5 text-xs font-medium shadow-sm shadow-black/5 transition-colors hover:bg-muted"
+              className="mt-2 inline-flex h-7 items-center rounded-md border border-slate-700 bg-slate-900 px-2.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
             >
               Apply
             </button>

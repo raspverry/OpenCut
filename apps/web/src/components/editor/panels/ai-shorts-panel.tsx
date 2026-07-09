@@ -177,15 +177,15 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
           : 'Ready'
 
   return (
-    <aside className="min-h-0 overflow-auto bg-card p-4">
+    <section className="flex min-h-[320px] flex-[1.15] flex-col overflow-hidden border-b border-slate-800 bg-[#10141c] p-3">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold tracking-tight">AI Shorts</h2>
-        <span className="rounded-md border bg-muted/35 px-2 py-1 text-[0.6875rem] font-medium text-muted-foreground">
+        <h2 className="text-xs font-semibold tracking-tight text-slate-200">AI Shorts</h2>
+        <span className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-[0.6875rem] font-medium text-slate-400">
           Max 30s
         </span>
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <label className="space-y-1 text-xs text-muted-foreground">
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <label className="space-y-1 text-xs text-slate-400">
           <span>Provider</span>
           <NativeSelect
             aria-label="Provider"
@@ -197,7 +197,7 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
             <NativeSelectOption value="openai">OpenAI</NativeSelectOption>
           </NativeSelect>
         </label>
-        <label className="space-y-1 text-xs text-muted-foreground">
+        <label className="space-y-1 text-xs text-slate-400">
           <span>Model</span>
           <NativeSelect
             aria-label="Model"
@@ -212,7 +212,7 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
             ))}
           </NativeSelect>
         </label>
-        <label className="space-y-1 text-xs text-muted-foreground">
+        <label className="space-y-1 text-xs text-slate-400">
           <span>Source</span>
           <NativeSelect
             aria-label="Source Language"
@@ -227,7 +227,7 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
             <NativeSelectOption value="zh">Chinese</NativeSelectOption>
           </NativeSelect>
         </label>
-        <label className="space-y-1 text-xs text-muted-foreground">
+        <label className="space-y-1 text-xs text-slate-400">
           <span>Captions</span>
           <NativeSelect
             aria-label="Caption Language"
@@ -245,7 +245,7 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
           type="button"
           onClick={analyze}
           disabled={status === 'loading'}
-          className="inline-flex h-8 shrink-0 items-center justify-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground shadow-sm shadow-black/10 transition-colors hover:bg-primary/85 disabled:pointer-events-none disabled:opacity-50"
+          className="inline-flex h-8 shrink-0 items-center justify-center rounded-md bg-blue-500 px-3 text-xs font-medium text-white shadow-sm shadow-black/20 transition-colors hover:bg-blue-400 disabled:pointer-events-none disabled:opacity-50"
         >
           Analyze
         </button>
@@ -254,7 +254,7 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
             type="button"
             onClick={loadCandidates}
             disabled={status === 'loading'}
-            className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-background px-2.5 text-xs font-medium shadow-sm shadow-black/5 transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
+            className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-slate-700 bg-slate-900 px-2.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800 disabled:pointer-events-none disabled:opacity-50"
           >
             Load Candidates
           </button>
@@ -263,22 +263,24 @@ export function AiShortsPanel({ sessionId, clips, client, onApplyTimeline }: AiS
           <button
             type="button"
             onClick={applyAllClips}
-            className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-background px-2.5 text-xs font-medium shadow-sm shadow-black/5 transition-colors hover:bg-muted"
+            className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-slate-700 bg-slate-900 px-2.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
           >
             Apply All
           </button>
         ) : null}
         <p
           role={status === 'error' ? 'alert' : 'status'}
-          className="truncate text-xs text-muted-foreground"
+          className={status === 'error' ? 'truncate text-xs text-red-300' : 'truncate text-xs text-slate-400'}
         >
           {statusText}
         </p>
       </div>
-      <CandidateList
-        clips={displayClips}
-        onApplyClip={sidecarClient.getTimelineSpec && onApplyTimeline ? applyClip : undefined}
-      />
-    </aside>
+      <div className="min-h-0 flex-1 overflow-auto">
+        <CandidateList
+          clips={displayClips}
+          onApplyClip={sidecarClient.getTimelineSpec && onApplyTimeline ? applyClip : undefined}
+        />
+      </div>
+    </section>
   )
 }

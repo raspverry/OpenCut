@@ -112,53 +112,53 @@ export function SourceMediaPanel({
   }
 
   return (
-    <aside className="bg-card p-4">
-      <h2 className="text-sm font-semibold tracking-tight">Source Media</h2>
-      <div className="mt-4 space-y-3">
-        <label className="block space-y-1 text-xs text-muted-foreground">
+    <aside className="h-full min-h-0 overflow-auto bg-[#10141c] p-3">
+      <h2 className="text-xs font-semibold tracking-tight text-slate-200">Source Media</h2>
+      <div className="mt-3 space-y-3">
+        <label className="block space-y-1 text-xs text-slate-400">
           <span>Session ID</span>
           <input
             aria-label="Session ID"
-            className="h-8 w-full rounded-md border bg-background px-2.5 text-xs text-foreground shadow-inner shadow-black/5 outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/25"
+            className="h-8 w-full rounded-md border border-slate-700 bg-slate-950/80 px-2.5 text-xs text-slate-100 shadow-inner shadow-black/20 outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
             value={sessionIdDraft}
             onChange={(event) => setSessionIdDraft(event.currentTarget.value)}
           />
         </label>
-        <label className="block space-y-1 text-xs text-muted-foreground">
+        <label className="block space-y-1 text-xs text-slate-400">
           <span>Session slug</span>
           <input
             aria-label="Session slug"
-            className="h-8 w-full rounded-md border bg-background px-2.5 text-xs text-foreground shadow-inner shadow-black/5 outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/25"
+            className="h-8 w-full rounded-md border border-slate-700 bg-slate-950/80 px-2.5 text-xs text-slate-100 shadow-inner shadow-black/20 outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
             value={slug}
             onChange={(event) => setSlug(event.currentTarget.value)}
           />
         </label>
-        <label className="block space-y-1 text-xs text-muted-foreground">
+        <label className="block space-y-1 text-xs text-slate-400">
           <span>Source path</span>
           <input
             aria-label="Source path"
-            className="h-8 w-full rounded-md border bg-background px-2.5 text-xs text-foreground shadow-inner shadow-black/5 outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/25"
+            className="h-8 w-full rounded-md border border-slate-700 bg-slate-950/80 px-2.5 text-xs text-slate-100 shadow-inner shadow-black/20 outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
             value={sourcePath}
             onChange={(event) => setSourcePath(event.currentTarget.value)}
           />
         </label>
-        <label className="block space-y-1 text-xs text-muted-foreground">
+        <label className="block space-y-1 text-xs text-slate-400">
           <span>Browser source file</span>
           <input
             aria-label="Browser source file"
             accept="video/mp4,video/quicktime,video/*"
-            className="block w-full text-xs text-muted-foreground file:mr-2 file:h-7 file:rounded-md file:border-0 file:bg-background file:px-2.5 file:text-xs file:font-medium file:text-foreground hover:file:bg-muted"
+            className="block w-full text-xs text-slate-400 file:mr-2 file:h-7 file:rounded-md file:border-0 file:bg-slate-900 file:px-2.5 file:text-xs file:font-medium file:text-slate-200 hover:file:bg-slate-800"
             type="file"
             onChange={(event) => {
               onBrowserSourceFileChange?.(event.currentTarget.files?.[0] ?? null)
             }}
           />
         </label>
-        <label className="block space-y-1 text-xs text-muted-foreground">
+        <label className="block space-y-1 text-xs text-slate-400">
           <span>Product catalog JSON</span>
           <textarea
             aria-label="Product catalog JSON"
-            className="min-h-28 w-full resize-y rounded-md border bg-background px-2.5 py-2 font-mono text-[0.6875rem] leading-4 text-foreground shadow-inner shadow-black/5 outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/25"
+            className="min-h-28 w-full resize-y rounded-md border border-slate-700 bg-slate-950/80 px-2.5 py-2 font-mono text-[0.6875rem] leading-4 text-slate-100 shadow-inner shadow-black/20 outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
             spellCheck={false}
             value={productCatalog}
             onChange={(event) => setProductCatalog(event.currentTarget.value)}
@@ -167,48 +167,51 @@ export function SourceMediaPanel({
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            className="inline-flex h-8 items-center rounded-md border bg-background px-2.5 text-xs font-medium shadow-sm shadow-black/5 transition-colors hover:bg-muted"
+            className="inline-flex h-8 items-center rounded-md border border-slate-700 bg-slate-900 px-2.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
             onClick={loadSession}
           >
             Load Session
           </button>
           <button
             type="button"
-            className="inline-flex h-8 items-center rounded-md border bg-background px-2.5 text-xs font-medium shadow-sm shadow-black/5 transition-colors hover:bg-muted"
+            className="inline-flex h-8 items-center rounded-md border border-slate-700 bg-slate-900 px-2.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
             onClick={createSession}
           >
             Create Session
           </button>
           <button
             type="button"
-            className="inline-flex h-8 items-center rounded-md border bg-background px-2.5 text-xs font-medium shadow-sm shadow-black/5 transition-colors hover:bg-muted"
+            className="inline-flex h-8 items-center rounded-md border border-slate-700 bg-slate-900 px-2.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
             onClick={ingestSource}
           >
             Ingest
           </button>
           <button
             type="button"
-            className="inline-flex h-8 items-center rounded-md border bg-background px-2.5 text-xs font-medium shadow-sm shadow-black/5 transition-colors hover:bg-muted"
+            className="inline-flex h-8 items-center rounded-md border border-slate-700 bg-slate-900 px-2.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
             onClick={loadProductCatalog}
           >
             Load Catalog
           </button>
           <button
             type="button"
-            className="inline-flex h-8 items-center rounded-md border bg-background px-2.5 text-xs font-medium shadow-sm shadow-black/5 transition-colors hover:bg-muted"
+            className="inline-flex h-8 items-center rounded-md border border-slate-700 bg-slate-900 px-2.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
             onClick={saveProductCatalog}
           >
             Save Catalog
           </button>
         </div>
       </div>
-      <p className="mt-3 break-all rounded-md bg-muted/35 px-2 py-1.5 text-xs text-muted-foreground">
+      <p className="mt-3 break-all rounded-md bg-slate-900 px-2 py-1.5 text-xs text-slate-400">
         {sourceFile}
       </p>
-      <p className="mt-2 break-all rounded-md bg-muted/25 px-2 py-1.5 text-xs text-muted-foreground">
+      <p className="mt-2 break-all rounded-md bg-slate-900/70 px-2 py-1.5 text-xs text-slate-500">
         {browserSourceFile ? browserSourceFile.name : 'No browser source file selected'}
       </p>
-      <p role="status" className="mt-2 break-all rounded-md border bg-background px-2 py-1.5 text-xs">
+      <p
+        role="status"
+        className="mt-2 break-all rounded-md border border-slate-700 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-300"
+      >
         {status}
       </p>
     </aside>

@@ -130,6 +130,49 @@ describe('ExportQaPanel', () => {
     )
   })
 
+  it('loads and saves clip review state through the sidecar', async () => {
+    const timeline = applyTimelineSpec(mockTimelineSpec)
+    const getClipState = vi.fn(async () => clipState({ status: 'pending' }))
+    const updateClipState = vi.fn(async () => clipState({ status: 'approved' }))
+
+    render(
+      <ExportQaPanel
+        sessionId="20260708-opencut-fixture"
+        timeline={timeline}
+        client={{
+          getClipState,
+          updateClipState,
+          verifyOpenCutExportManifest: vi.fn(),
+        }}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Load review p01-c01' }))
+    await waitFor(() =>
+      expect((screen.getByLabelText('Hook text for p01-c01') as HTMLInputElement).value).toBe(
+        'old hook'
+      )
+    )
+    fireEvent.change(screen.getByLabelText('Review status for p01-c01'), {
+      target: { value: 'approved' },
+    })
+    fireEvent.change(screen.getByLabelText('Hook text for p01-c01'), {
+      target: { value: 'edited hook' },
+    })
+    fireEvent.change(screen.getByLabelText('Caption for p01-c01'), {
+      target: { value: 'edited caption' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save review p01-c01' }))
+
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Saved review p01-c01'))
+    expect(getClipState).toHaveBeenCalledWith('20260708-opencut-fixture', 'p01-c01')
+    expect(updateClipState).toHaveBeenCalledWith('20260708-opencut-fixture', 'p01-c01', {
+      status: 'approved',
+      hook_text: 'edited hook',
+      caption: 'edited caption',
+    })
+  })
+
   it('uploads exported MP4 files into the sidecar final folder', async () => {
     const timeline = applyTimelineSpec(mockTimelineSpec)
     const uploadOpenCutExportArtifact = vi.fn(async () => ({
@@ -211,3 +254,18 @@ describe('ExportQaPanel', () => {
     expect(screen.getByRole('status').textContent).toBe('Rendered and uploaded p01-c01: 3 bytes')
   })
 })
+
+function clipState({ status }: { status: 'pending' | 'approved' | 'rejected' }) {
+  return {
+    clip_id: 'p01-c01',
+    status,
+    rendered_at: '2026-07-08T12:00:00+09:00',
+    render_params_hash: '',
+    trim_offset_start: 0,
+    trim_offset_end: 0,
+    caption: status === 'approved' ? 'edited caption' : 'old caption',
+    hook_text: status === 'approved' ? 'edited hook' : 'old hook',
+    review_note: '',
+    review_tags: [],
+  }
+}

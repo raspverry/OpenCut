@@ -270,6 +270,40 @@ describe('createSidecarClient', () => {
     expect(calls[0][1]?.body).toBe(buffer)
   })
 
+  it('loads and updates clip review state', async () => {
+    const calls: Array<[string, RequestInit | undefined]> = []
+    const state = clipState('pending')
+    const fetcher = async (input: string | URL | Request, init?: RequestInit) => {
+      calls.push([String(input), init])
+      return jsonResponse(init?.method === 'PUT' ? clipState('approved') : state)
+    }
+    const client = createSidecarClient({ fetcher })
+
+    const loaded = await client.getClipState('20260708-sale', 'p01-c01')
+    const updated = await client.updateClipState('20260708-sale', 'p01-c01', {
+      status: 'approved',
+      hook_text: 'edited hook',
+      caption: 'edited caption',
+    })
+
+    expect(loaded.status).toBe('pending')
+    expect(updated.status).toBe('approved')
+    expect(calls[0][0]).toBe(
+      'http://127.0.0.1:8789/api/sessions/20260708-sale/clips/p01-c01/state'
+    )
+    expect(calls[1][0]).toBe(
+      'http://127.0.0.1:8789/api/sessions/20260708-sale/clips/p01-c01/state'
+    )
+    expect(calls[1][1]?.method).toBe('PUT')
+    expect(calls[1][1]?.body).toBe(
+      JSON.stringify({
+        status: 'approved',
+        hook_text: 'edited hook',
+        caption: 'edited caption',
+      })
+    )
+  })
+
   it('throws Korean sidecar error detail when the API fails', async () => {
     const fetcher = async () => jsonResponse({ detail: '하이라이트 후보 파일이 없습니다' }, 404)
     const client = createSidecarClient({ fetcher })
@@ -287,6 +321,21 @@ function jsonResponse(body: unknown, status = 200) {
     status,
     headers: { 'content-type': 'application/json' },
   })
+}
+
+function clipState(status: 'pending' | 'approved' | 'rejected') {
+  return {
+    clip_id: 'p01-c01',
+    status,
+    rendered_at: '2026-07-08T12:00:00+09:00',
+    render_params_hash: '',
+    trim_offset_start: 0,
+    trim_offset_end: 0,
+    caption: status === 'approved' ? 'edited caption' : 'old caption',
+    hook_text: status === 'approved' ? 'edited hook' : 'old hook',
+    review_note: '',
+    review_tags: [],
+  }
 }
 
 function captionCueFile() {

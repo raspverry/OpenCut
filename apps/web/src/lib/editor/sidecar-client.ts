@@ -2,6 +2,8 @@ import type {
   AnalyzeResponse,
   CaptionCueFile,
   Candidates,
+  ClipState,
+  ClipStateUpdate,
   IngestResponse,
   LanguageCode,
   OpenCutExportArtifact,
@@ -123,6 +125,22 @@ export function createSidecarClient(options: { baseUrl?: string; fetcher?: Fetch
       return requestJson<CaptionCueFile>(
         fetcher,
         `${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/caption-cues/${encodeURIComponent(clipId)}`
+      )
+    },
+    getClipState(sessionId: string, clipId: string) {
+      return requestJson<ClipState>(
+        fetcher,
+        `${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/clips/${encodeURIComponent(clipId)}/state`
+      )
+    },
+    updateClipState(sessionId: string, clipId: string, payload: ClipStateUpdate) {
+      return requestJson<ClipState>(
+        fetcher,
+        `${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/clips/${encodeURIComponent(clipId)}/state`,
+        {
+          method: 'PUT',
+          body: JSON.stringify(payload),
+        }
       )
     },
     verifyOpenCutExport(sessionId: string, report: OpenCutExportReport) {

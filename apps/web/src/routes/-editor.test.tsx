@@ -42,6 +42,17 @@ describe('EditorPage', () => {
     expect(screen.getByText('実演と価格が同じ短い区間に入っている')).toBeTruthy()
   })
 
+  it('keeps editing tools inside an editor workspace layout', () => {
+    render(<EditorPage />)
+
+    expect(screen.getByLabelText('OpenCut AI editor workspace')).toBeTruthy()
+    expect(document.querySelector('[data-editor-zone="media-bin"]')).toBeTruthy()
+    expect(document.querySelector('[data-editor-zone="viewer"]')).toBeTruthy()
+    expect(document.querySelector('[data-editor-zone="inspector"]')).toBeTruthy()
+    expect(document.querySelector('[data-editor-zone="timeline"]')).toBeTruthy()
+    expect(screen.getByLabelText('Export QA').closest('[data-editor-zone="inspector"]')).toBeTruthy()
+  })
+
   it('displays analyzed candidates from the sidecar', async () => {
     const analyze = vi.fn(async () => ({
       session_id: '20260708-opencut-fixture',
