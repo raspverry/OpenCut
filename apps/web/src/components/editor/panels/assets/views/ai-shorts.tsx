@@ -24,6 +24,7 @@ import {
 	parseProductCatalog,
 } from "@/lib/ai-shorts/catalog";
 import { createSidecarClient } from "@/lib/ai-shorts/sidecar-client";
+import { sourceMatchesTimelineSpec } from "@/lib/ai-shorts/source-match";
 import { buildAiShortsInsertPlanFromSpec } from "@/lib/ai-shorts/timeline";
 import type {
 	LanguageCode,
@@ -58,6 +59,7 @@ export function AiShortsView() {
 	const [maxClipSec, setMaxClipSec] = useState("30");
 	const [maxClips, setMaxClips] = useState("5");
 	const [includeText, setIncludeText] = useState(true);
+	const [refreshAnalysis, setRefreshAnalysis] = useState(false);
 	const [timelineSpec, setTimelineSpec] = useState<TimelineSpec | null>(null);
 	const [clips, setClips] = useState<TimelineClip[]>([]);
 	const [state, setState] = useState<LoadState>("idle");
@@ -70,6 +72,10 @@ export function AiShortsView() {
 
 	const selectedAsset = videoAssets.find((asset) => asset.id === selectedMediaId);
 	const isBusy = state !== "idle";
+	const sourceMatchesSpec = sourceMatchesTimelineSpec({
+		sourceAsset: selectedAsset,
+		timelineSpec,
+	});
 
 	const applyTimelineSpec = (spec: TimelineSpec) => {
 		setTimelineSpec(spec);
@@ -200,7 +206,7 @@ export function AiShortsView() {
 				language,
 				max_clip_sec: positiveInteger(maxClipSec, 30),
 				max_clips: positiveInteger(maxClips, 5),
-				force: true,
+				force: refreshAnalysis,
 			});
 			const spec = await fetchTimelineSpec(normalizedSessionId);
 			toast.success(`Analyzed ${spec.clips.length} timeline clips`);
@@ -225,6 +231,10 @@ export function AiShortsView() {
 	const insertClip = async (clip: TimelineClip, startTime?: number) => {
 		if (!selectedAsset) {
 			toast.error("Import and select a source video first");
+			return 0;
+		}
+		if (!sourceMatchesSpec) {
+			toast.error("Selected source video does not match the timeline spec");
 			return 0;
 		}
 		const normalizedSessionId = sessionId.trim();
@@ -292,7 +302,7 @@ export function AiShortsView() {
 					variant="outline"
 					size="sm"
 					onClick={insertAll}
-					disabled={clips.length === 0 || !selectedAsset || isBusy}
+					disabled={clips.length === 0 || !sourceMatchesSpec || isBusy}
 				>
 					Insert all
 				</Button>
@@ -476,7 +486,7 @@ export function AiShortsView() {
 						</Select>
 					</Field>
 				</div>
-				<div className="flex items-center justify-between gap-2">
+				<div className="space-y-2">
 					<div className="flex items-center gap-2">
 						<Checkbox
 							id="ai-shorts-include-text"
@@ -490,6 +500,21 @@ export function AiShortsView() {
 							Add editable text layers
 						</Label>
 					</div>
+					<div className="flex items-center gap-2">
+						<Checkbox
+							id="ai-shorts-refresh-analysis"
+							checked={refreshAnalysis}
+							onCheckedChange={(checked) => setRefreshAnalysis(checked === true)}
+						/>
+						<Label
+							htmlFor="ai-shorts-refresh-analysis"
+							className="text-muted-foreground text-xs"
+						>
+							Refresh cached outputs
+						</Label>
+					</div>
+				</div>
+				<div className="flex items-center justify-between gap-2">
 					<div className="flex gap-2">
 						<Button
 							variant="outline"
@@ -523,6 +548,12 @@ export function AiShortsView() {
 						{timelineSpec.language.toUpperCase()}
 					</p>
 				)}
+				{timelineSpec && selectedAsset && !sourceMatchesSpec && (
+					<p className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-amber-600 text-xs dark:text-amber-300">
+						Selected source duration {formatTime(selectedAsset.duration ?? 0)}{" "}
+						does not match {formatTime(timelineSpec.source_video.duration_sec)}.
+					</p>
+				)}
 				{clips.length === 0 ? (
 					<div className="text-muted-foreground rounded-md border border-dashed p-4 text-sm">
 						Load a timeline spec or analyze a sidecar session to create editable
@@ -533,7 +564,7 @@ export function AiShortsView() {
 						<TimelineClipCard
 							key={clip.clip_id}
 							clip={clip}
-							disabled={!selectedAsset || isBusy}
+							disabled={!sourceMatchesSpec || isBusy}
 							onInsert={() => insertOne(clip)}
 						/>
 					))
