@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { buildAiShortsInsertPlanFromSpec } from "@/lib/ai-shorts/timeline";
+import {
+	buildAiShortsInsertPlanFromSpec,
+	buildFullSubtitleInsertPlan,
+} from "@/lib/ai-shorts/timeline";
 import type { CaptionCueFile, TimelineClip } from "@/lib/ai-shorts/types";
 import type { MediaAsset } from "@/lib/media/types";
 
@@ -197,6 +200,53 @@ describe("buildAiShortsInsertPlanFromSpec", () => {
 			trimStart: 95,
 			trimEnd: 0,
 			sourceDuration: 100,
+		});
+	});
+});
+
+describe("buildFullSubtitleInsertPlan", () => {
+	test("keeps the original source duration and adds editable captions without hooks or CTA", () => {
+		const plan = buildFullSubtitleInsertPlan({
+			sourceAsset,
+			startTime: 0,
+			captionCues: {
+				...cueFile,
+				clip_id: "full-ja",
+				source_range_sec: [0, 100],
+			},
+		});
+
+		expect(plan.duration).toBe(100);
+		expect(plan.sourceRange).toEqual([0, 100]);
+		expect(plan.elements).toHaveLength(3);
+		expect(plan.elements[0]).toMatchObject({
+			type: "video",
+			mediaId: "source-video",
+			name: "source.mp4 full source",
+			startTime: 0,
+			duration: 100,
+			trimStart: 0,
+			trimEnd: 0,
+			sourceDuration: 100,
+			transform: {
+				scaleX: 1,
+				scaleY: 1,
+				position: { x: 0, y: 0 },
+			},
+		});
+		expect(plan.elements[1]).toMatchObject({
+			type: "text",
+			name: "p01-c01-q001",
+			content: "半顔だけ塗ってみます",
+			startTime: 10,
+			duration: 3,
+		});
+		expect(plan.elements[2]).toMatchObject({
+			type: "text",
+			name: "p01-c01-q002",
+			content: "このツヤがすぐ出ます",
+			startTime: 13,
+			duration: 5,
 		});
 	});
 });

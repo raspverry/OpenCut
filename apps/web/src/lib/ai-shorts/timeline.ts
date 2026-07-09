@@ -179,6 +179,96 @@ export function buildAiShortsInsertPlanFromSpec({
 	};
 }
 
+export function buildFullSubtitleInsertPlan({
+	sourceAsset,
+	startTime,
+	captionCues,
+}: {
+	sourceAsset: MediaAsset;
+	startTime: number;
+	captionCues: CaptionCueFile;
+}): AiShortsInsertPlan {
+	const sourceDuration = getFullSourceDuration({ sourceAsset, captionCues });
+	const videoElement: CreateVideoElement = {
+		type: "video",
+		mediaId: sourceAsset.id,
+		name: `${sourceAsset.name} full source`,
+		duration: sourceDuration,
+		startTime,
+		trimStart: 0,
+		trimEnd: 0,
+		sourceDuration,
+		muted: false,
+		hidden: false,
+		transform: copyDefaultTransform(),
+		opacity: DEFAULTS.element.opacity,
+		blendMode: DEFAULTS.element.blendMode,
+		volume: 1,
+	};
+
+	const elements: CreateTimelineElement[] = [videoElement];
+	const fontFamily = captionCues.style.font_family || "Noto Sans CJK JP";
+	for (const cue of captionCues.cues) {
+		const captionText = cue.text.trim();
+		if (!captionText) continue;
+		const cueStart = clamp(cue.start_sec, 0, sourceDuration);
+		const cueEnd = clamp(
+			cue.end_sec,
+			Math.min(cueStart + MIN_CLIP_SECONDS, sourceDuration),
+			sourceDuration,
+		);
+		const cueDuration = cueEnd - cueStart;
+		if (cueDuration <= 0) continue;
+		elements.push(
+			buildTextElement({
+				raw: {
+					name: cue.cue_id,
+					content: captionText,
+					duration: cueDuration,
+					fontSize: fullSubtitleFontSize(sourceAsset),
+					fontFamily,
+					color: "#ffffff",
+					background: {
+						enabled: true,
+						color: "rgba(0, 0, 0, 0.64)",
+						cornerRadius: 10,
+						paddingX: 70,
+						paddingY: 42,
+					},
+					textAlign: "center",
+					fontWeight: "bold",
+					lineHeight: 1.16,
+					wordTimings: cue.words.map((word) => ({
+						word: word.w,
+						startTime: roundTiming(
+							clamp(word.start, cueStart, cueEnd) - cueStart,
+						),
+						endTime: roundTiming(clamp(word.end, cueStart, cueEnd) - cueStart),
+						confidence: word.confidence,
+					})),
+					transform: {
+						...copyDefaultTransform(),
+						position: {
+							x: 0,
+							y: fullSubtitleSafeAreaY({
+								sourceAsset,
+								anchor: captionCues.style.safe_area.anchor,
+							}),
+						},
+					},
+				},
+				startTime: startTime + cueStart,
+			}),
+		);
+	}
+
+	return {
+		elements,
+		duration: sourceDuration,
+		sourceRange: [0, sourceDuration],
+	};
+}
+
 function getSourceDuration({
 	clip,
 	sourceAsset,
@@ -193,6 +283,23 @@ function getSourceDuration({
 		MIN_CLIP_SECONDS,
 		clip.source_range_sec[1],
 		clip.source_range_sec[0],
+	);
+}
+
+function getFullSourceDuration({
+	sourceAsset,
+	captionCues,
+}: {
+	sourceAsset: MediaAsset;
+	captionCues: CaptionCueFile;
+}) {
+	if (Number.isFinite(sourceAsset.duration) && sourceAsset.duration) {
+		return Math.max(MIN_CLIP_SECONDS, sourceAsset.duration);
+	}
+	return Math.max(
+		MIN_CLIP_SECONDS,
+		captionCues.source_range_sec[1],
+		...captionCues.cues.map((cue) => cue.end_sec),
 	);
 }
 
@@ -238,6 +345,28 @@ function captionSafeAreaY(
 	if (anchor === "top") return -500;
 	if (anchor === "center") return 0;
 	return 500;
+}
+
+function fullSubtitleSafeAreaY({
+	sourceAsset,
+	anchor,
+}: {
+	sourceAsset: MediaAsset;
+	anchor: CaptionCueFile["style"]["safe_area"]["anchor"];
+}) {
+	const sourceHeight =
+		sourceAsset.height && sourceAsset.height > 0 ? sourceAsset.height : 720;
+	if (anchor === "top") return -Math.round(sourceHeight * 0.34);
+	if (anchor === "center") return 0;
+	return Math.round(sourceHeight * 0.34);
+}
+
+function fullSubtitleFontSize(sourceAsset: MediaAsset) {
+	const sourceHeight =
+		sourceAsset.height && sourceAsset.height > 0 ? sourceAsset.height : 720;
+	if (sourceHeight <= 800) return 4.8;
+	if (sourceHeight <= 1200) return 3.9;
+	return 2.9;
 }
 
 function ctaText(language: CaptionCueFile["language"] | undefined) {

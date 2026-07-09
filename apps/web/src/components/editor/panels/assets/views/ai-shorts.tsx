@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { EditorCore } from "@/core";
+import { TracksSnapshotCommand } from "@/lib/commands/timeline";
 import {
 	Select,
 	SelectContent,
@@ -23,9 +25,16 @@ import {
 	formatProductCatalog,
 	parseProductCatalog,
 } from "@/lib/ai-shorts/catalog";
+import {
+	buildFullSubtitleTrackSnapshot,
+	sourceMatchesFullSubtitleCues,
+} from "@/lib/ai-shorts/full-subtitles";
 import { createSidecarClient } from "@/lib/ai-shorts/sidecar-client";
 import { sourceMatchesTimelineSpec } from "@/lib/ai-shorts/source-match";
-import { buildAiShortsInsertPlanFromSpec } from "@/lib/ai-shorts/timeline";
+import {
+	buildAiShortsInsertPlanFromSpec,
+	buildFullSubtitleInsertPlan,
+} from "@/lib/ai-shorts/timeline";
 import type {
 	LanguageCode,
 	SidecarProvider,
@@ -34,8 +43,9 @@ import type {
 	TimelineSpec,
 } from "@/lib/ai-shorts/types";
 import type { MediaAsset } from "@/lib/media/types";
+import type { CreateTimelineElement } from "@/lib/timeline";
 import { useAiShortsExportStore } from "@/stores/ai-shorts-export-store";
-import { Target } from "lucide-react";
+import { Captions, Target } from "lucide-react";
 import { toast } from "sonner";
 
 type LoadState = "idle" | "loading" | "ingesting" | "analyzing" | "inserting";
@@ -287,6 +297,61 @@ export function AiShortsView() {
 			});
 		}
 		return plan.duration;
+	};
+
+	const applyFullSubtitles = async () => {
+		if (!selectedAsset) {
+			toast.error("Import and select a source video first");
+			return;
+		}
+		const normalizedSessionId = sessionId.trim();
+		if (!normalizedSessionId) {
+			toast.error("Enter a sidecar session id");
+			return;
+		}
+		setState("inserting");
+		try {
+			const clipId = `full-${language}`;
+			const captionCues = await sidecar.getCaptionCues(
+				normalizedSessionId,
+				clipId,
+			);
+			if (
+				!sourceMatchesFullSubtitleCues({
+					sourceAsset: selectedAsset,
+					captionCues,
+				})
+			) {
+				toast.error("Selected source video does not match the full subtitles");
+				return;
+			}
+			const plan = buildFullSubtitleInsertPlan({
+				sourceAsset: selectedAsset,
+				startTime: 0,
+				captionCues,
+			});
+			await switchToFullSubtitleScene({ editor, clipId });
+			await updateProjectCanvasForSource({
+				editor,
+				sourceAsset: selectedAsset,
+			});
+			insertFullSubtitleTracks({
+				editor,
+				elements: plan.elements,
+				clipId,
+			});
+			setExportTarget({
+				sessionId: normalizedSessionId,
+				clipId,
+			});
+			toast.success(
+				`Applied ${captionCues.cues.length} editable subtitles for ${clipId}`,
+			);
+		} catch (error) {
+			toast.error(errorMessage(error));
+		} finally {
+			setState("idle");
+		}
 	};
 
 	const insertOne = async (clip: TimelineClip) => {
@@ -650,6 +715,15 @@ export function AiShortsView() {
 							Analyze
 						</Button>
 					</div>
+					<Button
+						variant="secondary"
+						size="sm"
+						onClick={applyFullSubtitles}
+						disabled={!selectedAsset || isBusy}
+					>
+						<Captions className="size-4" />
+						Full subs
+					</Button>
 				</div>
 				<Field label="Max clips" htmlFor="ai-shorts-max-clips">
 					<Input
@@ -737,6 +811,83 @@ export function AiShortsView() {
 			</div>
 		</PanelView>
 	);
+}
+
+async function switchToFullSubtitleScene({
+	editor,
+	clipId,
+}: {
+	editor: EditorCore;
+	clipId: string;
+}) {
+	const existingScene = editor.scenes
+		.getScenes()
+		.find((scene) => scene.name === clipId);
+	const sceneId =
+		existingScene?.id ??
+		(await editor.scenes.createScene({ name: clipId, isMain: false }));
+	await editor.scenes.switchToScene({ sceneId });
+}
+
+async function updateProjectCanvasForSource({
+	editor,
+	sourceAsset,
+}: {
+	editor: EditorCore;
+	sourceAsset: MediaAsset;
+}) {
+	const nextCanvasSize = sourceCanvasSize(sourceAsset);
+	const activeProject = editor.project.getActive();
+	const currentCanvasSize = activeProject?.settings.canvasSize;
+	if (
+		currentCanvasSize?.width === nextCanvasSize.width &&
+		currentCanvasSize.height === nextCanvasSize.height &&
+		activeProject?.settings.canvasSizeMode === "custom"
+	) {
+		return;
+	}
+	await editor.project.updateSettings({
+		settings: {
+			canvasSize: nextCanvasSize,
+			canvasSizeMode: "custom",
+		},
+		pushHistory: true,
+	});
+}
+
+function insertFullSubtitleTracks({
+	editor,
+	elements,
+	clipId,
+}: {
+	editor: EditorCore;
+	elements: CreateTimelineElement[];
+	clipId: string;
+}) {
+	const beforeTracks = editor.timeline.getTracks();
+	const afterTracks = buildFullSubtitleTrackSnapshot({
+		beforeTracks,
+		elements,
+		clipId,
+	});
+	if (
+		afterTracks.length === beforeTracks.length &&
+		afterTracks.every((track, index) => track === beforeTracks[index])
+	) {
+		return;
+	}
+	editor.command.execute({
+		command: new TracksSnapshotCommand(beforeTracks, afterTracks),
+	});
+}
+
+function sourceCanvasSize(sourceAsset: MediaAsset) {
+	return {
+		width:
+			sourceAsset.width && sourceAsset.width > 0 ? sourceAsset.width : 1280,
+		height:
+			sourceAsset.height && sourceAsset.height > 0 ? sourceAsset.height : 720,
+	};
 }
 
 function TimelineClipCard({
