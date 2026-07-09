@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   activeCaptionText,
+  renderTimeoutMs,
   selectMediaRecorderMimeType,
   splitCaptionLines,
 } from './browser-clip-renderer'
@@ -49,6 +50,11 @@ describe('browser clip renderer helpers', () => {
     expect(activeCaptionText(captionCueFile(), 10.5)).toBe('最初の一文')
     expect(activeCaptionText(captionCueFile(), 12)).toBe('次の一文')
     expect(activeCaptionText(captionCueFile(), 14)).toBe('')
+  })
+
+  it('allows enough time for large-file browser export smoke runs', () => {
+    expect(renderTimeoutMs(20)).toBeGreaterThanOrEqual(180_000)
+    expect(renderTimeoutMs(30)).toBeGreaterThanOrEqual(240_000)
   })
 
   it('splits Japanese caption text with a safe minimum line length', () => {

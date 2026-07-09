@@ -14,6 +14,9 @@ type BrowserClipRendererOptions = {
 const CANVAS_WIDTH = 1080
 const CANVAS_HEIGHT = 1920
 const FPS = 30
+const MIN_RENDER_TIMEOUT_MS = 180_000
+const RENDER_TIMEOUT_PER_SEC_MS = 8_000
+const STALL_TIMEOUT_MS = 45_000
 const MIME_TYPES = [
   'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
   'video/mp4;codecs=avc1.42E01E',
@@ -207,13 +210,20 @@ async function drawUntilDone({
   ctaStartSec: number
   captionFile: CaptionCueFile
 }) {
-  const timeoutMs = durationSec * 1500 + 10_000
+  const timeoutMs = renderTimeoutMs(durationSec)
   const deadline = performance.now() + timeoutMs
+  let lastSourceTime = video.currentTime
+  let lastProgressAt = performance.now()
 
   return new Promise<void>((resolve, reject) => {
     function draw() {
       const sourceTime = video.currentTime
       const clipTime = sourceTime - sourceStartSec
+      const now = performance.now()
+      if (sourceTime > lastSourceTime + 0.03) {
+        lastSourceTime = sourceTime
+        lastProgressAt = now
+      }
       drawFrame({
         context,
         video,
@@ -229,7 +239,11 @@ async function drawUntilDone({
         resolve()
         return
       }
-      if (performance.now() > deadline) {
+      if (now - lastProgressAt > STALL_TIMEOUT_MS) {
+        reject(new Error('OpenCut browser export 재생 진행이 멈췄습니다'))
+        return
+      }
+      if (now > deadline) {
         reject(new Error('OpenCut browser export 시간이 초과되었습니다'))
         return
       }
@@ -237,6 +251,10 @@ async function drawUntilDone({
     }
     requestAnimationFrame(draw)
   })
+}
+
+export function renderTimeoutMs(durationSec: number): number {
+  return Math.max(MIN_RENDER_TIMEOUT_MS, durationSec * RENDER_TIMEOUT_PER_SEC_MS)
 }
 
 function drawFrame({
