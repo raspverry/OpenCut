@@ -117,6 +117,12 @@ export function buildAiShortsInsertPlanFromSpec({
 							textAlign: "center",
 							fontWeight: "bold",
 							lineHeight: 1.16,
+							wordTimings: cue.words.map((word) => ({
+								word: word.w,
+								startTime: roundTiming(clamp(word.start, cueStart, cueEnd) - cueStart),
+								endTime: roundTiming(clamp(word.end, cueStart, cueEnd) - cueStart),
+								confidence: word.confidence,
+							})),
 							transform: {
 								...copyDefaultTransform(),
 								position: {
@@ -168,4 +174,8 @@ function captionSafeAreaY(anchor: CaptionCueFile["style"]["safe_area"]["anchor"]
 	if (anchor === "top") return -500;
 	if (anchor === "center") return 0;
 	return 500;
+}
+
+function roundTiming(seconds: number) {
+	return Math.round(seconds * 1000) / 1000;
 }

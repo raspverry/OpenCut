@@ -143,6 +143,13 @@ export interface TextBackground {
 	offsetY?: number;
 }
 
+export interface TextWordTiming {
+	word: string;
+	startTime: number;
+	endTime: number;
+	confidence?: number | null;
+}
+
 export interface TextElement extends BaseTimelineElement {
 	type: "text";
 	content: string;
@@ -161,6 +168,7 @@ export interface TextElement extends BaseTimelineElement {
 	opacity: number;
 	blendMode?: BlendMode;
 	effects?: Effect[];
+	wordTimings?: TextWordTiming[];
 }
 
 export interface StickerElement extends BaseTimelineElement {

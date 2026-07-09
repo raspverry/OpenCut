@@ -150,6 +150,7 @@ export function buildTextElement({
 		transform: t.transform ?? DEFAULTS.text.element.transform,
 		opacity: t.opacity ?? DEFAULTS.text.element.opacity,
 		blendMode: t.blendMode ?? DEFAULTS.element.blendMode,
+		wordTimings: t.wordTimings,
 	};
 }
 

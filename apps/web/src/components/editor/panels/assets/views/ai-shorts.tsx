@@ -15,6 +15,10 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useEditor } from "@/hooks/use-editor";
+import {
+	defaultModelForProvider,
+	nextModelForProvider,
+} from "@/lib/ai-shorts/models";
 import { createSidecarClient } from "@/lib/ai-shorts/sidecar-client";
 import { buildAiShortsInsertPlanFromSpec } from "@/lib/ai-shorts/timeline";
 import type {
@@ -41,6 +45,7 @@ export function AiShortsView() {
 	const [sessionId, setSessionId] = useState("");
 	const [selectedMediaId, setSelectedMediaId] = useState("");
 	const [provider, setProvider] = useState<SidecarProvider>("openai");
+	const [model, setModel] = useState(defaultModelForProvider("openai"));
 	const [sourceLanguage, setSourceLanguage] =
 		useState<SourceLanguageCode>("ko");
 	const [language, setLanguage] = useState<LanguageCode>("ja");
@@ -99,6 +104,7 @@ export function AiShortsView() {
 		try {
 			await sidecar.analyze(normalizedSessionId, {
 				provider,
+				model: model.trim() || undefined,
 				source_language: sourceLanguage,
 				language,
 				max_clip_sec: positiveInteger(maxClipSec, 30),
@@ -112,6 +118,17 @@ export function AiShortsView() {
 		} finally {
 			setState("idle");
 		}
+	};
+
+	const changeProvider = (nextProvider: SidecarProvider) => {
+		setModel(
+			nextModelForProvider({
+				currentModel: model,
+				currentProvider: provider,
+				nextProvider,
+			}),
+		);
+		setProvider(nextProvider);
 	};
 
 	const insertClip = async (clip: TimelineClip, startTime?: number) => {
@@ -227,7 +244,9 @@ export function AiShortsView() {
 					<Field label="Provider">
 						<Select
 							value={provider}
-							onValueChange={(value) => setProvider(value as SidecarProvider)}
+							onValueChange={(value) =>
+								changeProvider(value as SidecarProvider)
+							}
 						>
 							<SelectTrigger className="h-8 w-full bg-background">
 								<SelectValue />
@@ -237,6 +256,14 @@ export function AiShortsView() {
 								<SelectItem value="anthropic">Claude</SelectItem>
 							</SelectContent>
 						</Select>
+					</Field>
+					<Field label="Model">
+						<Input
+							value={model}
+							onChange={(event) => setModel(event.target.value)}
+							placeholder={defaultModelForProvider(provider)}
+							size="sm"
+						/>
 					</Field>
 					<Field label="Max seconds">
 						<Input

@@ -34,7 +34,10 @@ const cueFile: CaptionCueFile = {
 			start_sec: 10,
 			end_sec: 13,
 			text: "半顔だけ塗ってみます",
-			words: [],
+			words: [
+				{ w: "半顔だけ", start: 11.7, end: 12.3, confidence: 0.94 },
+				{ w: "塗ってみます", start: 12.3, end: 13, confidence: 0.94 },
+			],
 		},
 		{
 			cue_id: "p01-c01-q002",
@@ -98,6 +101,20 @@ describe("buildAiShortsInsertPlanFromSpec", () => {
 			startTime: 5,
 			duration: 3,
 			fontFamily: "Noto Sans CJK JP",
+			wordTimings: [
+				{
+					word: "半顔だけ",
+					startTime: 1.7,
+					endTime: 2.3,
+					confidence: 0.94,
+				},
+				{
+					word: "塗ってみます",
+					startTime: 2.3,
+					endTime: 3,
+					confidence: 0.94,
+				},
+			],
 		});
 		expect(plan.elements[3]).toMatchObject({
 			type: "text",
