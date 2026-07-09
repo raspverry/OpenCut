@@ -19,6 +19,10 @@ import {
 	defaultModelForProvider,
 	nextModelForProvider,
 } from "@/lib/ai-shorts/models";
+import {
+	formatProductCatalog,
+	parseProductCatalog,
+} from "@/lib/ai-shorts/catalog";
 import { createSidecarClient } from "@/lib/ai-shorts/sidecar-client";
 import { buildAiShortsInsertPlanFromSpec } from "@/lib/ai-shorts/timeline";
 import type {
@@ -43,6 +47,8 @@ export function AiShortsView() {
 	const sidecar = useMemo(() => createSidecarClient(), []);
 
 	const [sessionId, setSessionId] = useState("");
+	const [sessionSlug, setSessionSlug] = useState("opencut-live");
+	const [catalogText, setCatalogText] = useState(formatProductCatalog([]));
 	const [selectedMediaId, setSelectedMediaId] = useState("");
 	const [provider, setProvider] = useState<SidecarProvider>("openai");
 	const [model, setModel] = useState(defaultModelForProvider("openai"));
@@ -75,6 +81,66 @@ export function AiShortsView() {
 		const spec = await sidecar.getTimelineSpec(normalizedSessionId);
 		applyTimelineSpec(spec);
 		return spec;
+	};
+
+	const createSession = async () => {
+		const normalizedSlug = normalizeSlug(sessionSlug);
+		if (!normalizedSlug) {
+			toast.error("Enter a session slug");
+			return;
+		}
+		setState("loading");
+		try {
+			const session = await sidecar.createSession(normalizedSlug);
+			setSessionSlug(normalizedSlug);
+			setSessionId(session.session_id);
+			toast.success(`Created ${session.session_id}`);
+		} catch (error) {
+			toast.error(errorMessage(error));
+		} finally {
+			setState("idle");
+		}
+	};
+
+	const loadSessionConfig = async () => {
+		const normalizedSessionId = sessionId.trim();
+		if (!normalizedSessionId) {
+			toast.error("Enter a sidecar session id");
+			return;
+		}
+		setState("loading");
+		try {
+			const config = await sidecar.getSessionConfig(normalizedSessionId);
+			setLanguage(config.language);
+			if (config.source_language) {
+				setSourceLanguage(config.source_language);
+			}
+			setCatalogText(formatProductCatalog(config.products));
+			toast.success(`Loaded ${config.products.length} products`);
+		} catch (error) {
+			toast.error(errorMessage(error));
+		} finally {
+			setState("idle");
+		}
+	};
+
+	const saveProducts = async () => {
+		const normalizedSessionId = sessionId.trim();
+		if (!normalizedSessionId) {
+			toast.error("Enter a sidecar session id");
+			return;
+		}
+		setState("loading");
+		try {
+			const products = parseProductCatalog(catalogText);
+			const config = await sidecar.updateProducts(normalizedSessionId, products);
+			setCatalogText(formatProductCatalog(config.products));
+			toast.success(`Saved ${config.products.length} products`);
+		} catch (error) {
+			toast.error(errorMessage(error));
+		} finally {
+			setState("idle");
+		}
 	};
 
 	const loadTimelineSpec = async () => {
@@ -209,13 +275,16 @@ export function AiShortsView() {
 			contentClassName="space-y-3 pb-3"
 		>
 			<div className="space-y-2 rounded-md border bg-accent/25 p-2">
-				<Field label="Source video">
+				<Field label="Source video" htmlFor="ai-shorts-source-video">
 					<Select
 						value={selectedMediaId}
 						onValueChange={setSelectedMediaId}
 						disabled={videoAssets.length === 0}
 					>
-						<SelectTrigger className="h-8 w-full bg-background">
+						<SelectTrigger
+							id="ai-shorts-source-video"
+							className="h-8 w-full bg-background"
+						>
 							<SelectValue placeholder="Import a video in Media first" />
 						</SelectTrigger>
 						<SelectContent>
@@ -232,23 +301,80 @@ export function AiShortsView() {
 						Use the Media tab to import the original video, then return here.
 					</p>
 				)}
-				<Field label="Sidecar session id">
-					<Input
-						value={sessionId}
-						onChange={(event) => setSessionId(event.target.value)}
-						placeholder="sample-session"
-						size="sm"
+				<Field label="Sidecar session id" htmlFor="ai-shorts-session-id">
+					<div className="flex gap-2">
+						<Input
+							id="ai-shorts-session-id"
+							name="ai-shorts-session-id"
+							className="min-w-0"
+							value={sessionId}
+							onChange={(event) => setSessionId(event.target.value)}
+							placeholder="sample-session"
+							size="sm"
+						/>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={loadSessionConfig}
+							disabled={isBusy}
+						>
+							Load config
+						</Button>
+					</div>
+				</Field>
+				<Field label="Session slug" htmlFor="ai-shorts-session-slug">
+					<div className="flex gap-2">
+						<Input
+							id="ai-shorts-session-slug"
+							name="ai-shorts-session-slug"
+							className="min-w-0"
+							value={sessionSlug}
+							onChange={(event) => setSessionSlug(event.target.value)}
+							placeholder="live-20260709"
+							size="sm"
+						/>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={createSession}
+							disabled={isBusy}
+						>
+							New
+						</Button>
+					</div>
+				</Field>
+				<Field label="Product catalog JSON" htmlFor="ai-shorts-product-catalog">
+					<Textarea
+						id="ai-shorts-product-catalog"
+						name="ai-shorts-product-catalog"
+						value={catalogText}
+						onChange={(event) => setCatalogText(event.target.value)}
+						className="min-h-28 resize-y bg-background font-mono text-xs"
+						spellCheck={false}
 					/>
 				</Field>
+				<div className="flex justify-end">
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={saveProducts}
+						disabled={isBusy}
+					>
+						Save products
+					</Button>
+				</div>
 				<div className="grid grid-cols-2 gap-2">
-					<Field label="Provider">
+					<Field label="Provider" htmlFor="ai-shorts-provider">
 						<Select
 							value={provider}
 							onValueChange={(value) =>
 								changeProvider(value as SidecarProvider)
 							}
 						>
-							<SelectTrigger className="h-8 w-full bg-background">
+							<SelectTrigger
+								id="ai-shorts-provider"
+								className="h-8 w-full bg-background"
+							>
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
@@ -257,30 +383,37 @@ export function AiShortsView() {
 							</SelectContent>
 						</Select>
 					</Field>
-					<Field label="Model">
+					<Field label="Model" htmlFor="ai-shorts-model">
 						<Input
+							id="ai-shorts-model"
+							name="ai-shorts-model"
 							value={model}
 							onChange={(event) => setModel(event.target.value)}
 							placeholder={defaultModelForProvider(provider)}
 							size="sm"
 						/>
 					</Field>
-					<Field label="Max seconds">
+					<Field label="Max seconds" htmlFor="ai-shorts-max-seconds">
 						<Input
+							id="ai-shorts-max-seconds"
+							name="ai-shorts-max-seconds"
 							value={maxClipSec}
 							onChange={(event) => setMaxClipSec(event.target.value)}
 							inputMode="numeric"
 							size="sm"
 						/>
 					</Field>
-					<Field label="Source language">
+					<Field label="Source language" htmlFor="ai-shorts-source-language">
 						<Select
 							value={sourceLanguage}
 							onValueChange={(value) =>
 								setSourceLanguage(value as SourceLanguageCode)
 							}
 						>
-							<SelectTrigger className="h-8 w-full bg-background">
+							<SelectTrigger
+								id="ai-shorts-source-language"
+								className="h-8 w-full bg-background"
+							>
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
@@ -290,12 +423,15 @@ export function AiShortsView() {
 							</SelectContent>
 						</Select>
 					</Field>
-					<Field label="Caption language">
+					<Field label="Caption language" htmlFor="ai-shorts-caption-language">
 						<Select
 							value={language}
 							onValueChange={(value) => setLanguage(value as LanguageCode)}
 						>
-							<SelectTrigger className="h-8 w-full bg-background">
+							<SelectTrigger
+								id="ai-shorts-caption-language"
+								className="h-8 w-full bg-background"
+							>
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
@@ -333,8 +469,10 @@ export function AiShortsView() {
 						</Button>
 					</div>
 				</div>
-				<Field label="Max clips">
+				<Field label="Max clips" htmlFor="ai-shorts-max-clips">
 					<Input
+						id="ai-shorts-max-clips"
+						name="ai-shorts-max-clips"
 						value={maxClips}
 						onChange={(event) => setMaxClips(event.target.value)}
 						inputMode="numeric"
@@ -409,14 +547,18 @@ function TimelineClipCard({
 
 function Field({
 	label,
+	htmlFor,
 	children,
 }: {
 	label: string;
+	htmlFor?: string;
 	children: React.ReactNode;
 }) {
 	return (
 		<div className="space-y-1">
-			<Label className="text-muted-foreground text-xs">{label}</Label>
+			<Label htmlFor={htmlFor} className="text-muted-foreground text-xs">
+				{label}
+			</Label>
 			{children}
 		</div>
 	);
@@ -429,6 +571,14 @@ function isVideoAsset(asset: MediaAsset): asset is MediaAsset & { type: "video" 
 function positiveInteger(value: string, fallback: number) {
 	const parsed = Number.parseInt(value, 10);
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function normalizeSlug(value: string) {
+	return value
+		.trim()
+		.toLowerCase()
+		.replace(/[^a-z0-9-]+/g, "-")
+		.replace(/^-+|-+$/g, "");
 }
 
 function formatRange(start: number, end: number) {

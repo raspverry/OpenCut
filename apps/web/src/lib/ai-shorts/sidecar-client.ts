@@ -2,6 +2,9 @@ import type {
 	AnalyzeResponse,
 	CaptionCueFile,
 	LanguageCode,
+	Product,
+	SessionConfig,
+	SessionResponse,
 	SidecarProvider,
 	SourceLanguageCode,
 	TimelineSpec,
@@ -46,6 +49,28 @@ export function createSidecarClient(
 	}
 
 	return {
+		createSession(slug: string) {
+			return requestJson<SessionResponse>(fetcher, `${baseUrl}/api/sessions`, {
+				method: "POST",
+				body: JSON.stringify({ slug }),
+			});
+		},
+		getSessionConfig(sessionId: string) {
+			return requestJson<SessionConfig>(
+				fetcher,
+				`${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/config`,
+			);
+		},
+		updateProducts(sessionId: string, products: Product[]) {
+			return requestJson<SessionConfig>(
+				fetcher,
+				`${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/products`,
+				{
+					method: "PUT",
+					body: JSON.stringify({ products }),
+				},
+			);
+		},
 		analyze(sessionId: string, payload: AnalyzeRequest) {
 			return requestJson<AnalyzeResponse>(
 				fetcher,
