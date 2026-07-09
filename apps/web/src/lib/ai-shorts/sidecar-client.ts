@@ -1,6 +1,7 @@
 import type {
 	AnalyzeResponse,
 	CaptionCueFile,
+	IngestResponse,
 	LanguageCode,
 	Product,
 	SessionConfig,
@@ -68,6 +69,25 @@ export function createSidecarClient(
 				{
 					method: "PUT",
 					body: JSON.stringify({ products }),
+				},
+			);
+		},
+		ingestSourceVideo(
+			sessionId: string,
+			file: File,
+			options: { force?: boolean } = {},
+		) {
+			const query = options.force ? "?force=true" : "";
+			return requestJson<IngestResponse>(
+				fetcher,
+				`${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/ingest${query}`,
+				{
+					method: "POST",
+					body: file,
+					headers: {
+						"content-type": file.type || "application/octet-stream",
+						"x-filename": file.name || "recording.mp4",
+					},
 				},
 			);
 		},

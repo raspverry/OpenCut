@@ -35,7 +35,7 @@ import type {
 import type { MediaAsset } from "@/lib/media/types";
 import { toast } from "sonner";
 
-type LoadState = "idle" | "loading" | "analyzing" | "inserting";
+type LoadState = "idle" | "loading" | "ingesting" | "analyzing" | "inserting";
 
 export function AiShortsView() {
 	const editor = useEditor();
@@ -136,6 +136,31 @@ export function AiShortsView() {
 			const config = await sidecar.updateProducts(normalizedSessionId, products);
 			setCatalogText(formatProductCatalog(config.products));
 			toast.success(`Saved ${config.products.length} products`);
+		} catch (error) {
+			toast.error(errorMessage(error));
+		} finally {
+			setState("idle");
+		}
+	};
+
+	const ingestSource = async () => {
+		const normalizedSessionId = sessionId.trim();
+		if (!normalizedSessionId) {
+			toast.error("Enter a sidecar session id");
+			return;
+		}
+		if (!selectedAsset) {
+			toast.error("Import and select a source video first");
+			return;
+		}
+		setState("ingesting");
+		try {
+			const result = await sidecar.ingestSourceVideo(
+				normalizedSessionId,
+				selectedAsset.file,
+				{ force: true },
+			);
+			toast.success(`Ingested ${formatProbe(result.probe)}`);
 		} catch (error) {
 			toast.error(errorMessage(error));
 		} finally {
@@ -276,25 +301,35 @@ export function AiShortsView() {
 		>
 			<div className="space-y-2 rounded-md border bg-accent/25 p-2">
 				<Field label="Source video" htmlFor="ai-shorts-source-video">
-					<Select
-						value={selectedMediaId}
-						onValueChange={setSelectedMediaId}
-						disabled={videoAssets.length === 0}
-					>
-						<SelectTrigger
-							id="ai-shorts-source-video"
-							className="h-8 w-full bg-background"
+					<div className="flex gap-2">
+						<Select
+							value={selectedMediaId}
+							onValueChange={setSelectedMediaId}
+							disabled={videoAssets.length === 0}
 						>
-							<SelectValue placeholder="Import a video in Media first" />
-						</SelectTrigger>
-						<SelectContent>
-							{videoAssets.map((asset) => (
-								<SelectItem key={asset.id} value={asset.id}>
-									{asset.name}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
+							<SelectTrigger
+								id="ai-shorts-source-video"
+								className="h-8 min-w-0 flex-1 bg-background"
+							>
+								<SelectValue placeholder="Import a video in Media first" />
+							</SelectTrigger>
+							<SelectContent>
+								{videoAssets.map((asset) => (
+									<SelectItem key={asset.id} value={asset.id}>
+										{asset.name}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={ingestSource}
+							disabled={!selectedAsset || isBusy}
+						>
+							Ingest source
+						</Button>
+					</div>
 				</Field>
 				{videoAssets.length === 0 && (
 					<p className="text-muted-foreground text-xs">
@@ -590,6 +625,15 @@ function formatTime(seconds: number) {
 	const minutes = Math.floor(total / 60);
 	const rest = total % 60;
 	return `${minutes}:${rest.toString().padStart(2, "0")}`;
+}
+
+function formatProbe(probe: {
+	duration_sec: number;
+	width: number;
+	height: number;
+	orientation: string;
+}) {
+	return `${probe.orientation} ${probe.width}x${probe.height} ${formatTime(probe.duration_sec)}`;
 }
 
 function errorMessage(error: unknown) {

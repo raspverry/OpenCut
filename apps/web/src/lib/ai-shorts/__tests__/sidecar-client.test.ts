@@ -87,6 +87,40 @@ describe("createSidecarClient", () => {
 		expect(calls[0].init?.body).toBe(JSON.stringify({ products }));
 	});
 
+	test("uploads the selected OpenCut source video to ingest", async () => {
+		const calls: Array<{ url: string; init?: RequestInit }> = [];
+		const file = new File(["video"], "live recording.mp4", {
+			type: "video/mp4",
+		});
+		const client = createSidecarClient({
+			baseUrl: "http://sidecar.test",
+			fetcher: async (input, init) => {
+				calls.push({ url: String(input), init });
+				return Response.json({
+					session_id: "s01",
+					probe: {
+						duration_sec: 3600,
+						width: 1080,
+						height: 1920,
+						orientation: "vertical",
+					},
+				});
+			},
+		});
+
+		const result = await client.ingestSourceVideo("s01", file, { force: true });
+		const headers = calls[0].init?.headers as Record<string, string>;
+
+		expect(result.probe.orientation).toBe("vertical");
+		expect(calls[0].url).toBe(
+			"http://sidecar.test/api/sessions/s01/ingest?force=true",
+		);
+		expect(calls[0].init?.method).toBe("POST");
+		expect(calls[0].init?.body).toBe(file);
+		expect(headers["content-type"]).toBe("video/mp4");
+		expect(headers["x-filename"]).toBe("live recording.mp4");
+	});
+
 	test("loads timeline spec through the OpenCut contract endpoint", async () => {
 		const requests: string[] = [];
 		const client = createSidecarClient({

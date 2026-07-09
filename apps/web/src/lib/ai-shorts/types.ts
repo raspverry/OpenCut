@@ -28,6 +28,18 @@ export type SessionResponse = {
 	path: string;
 };
 
+export type ProbeInfo = {
+	duration_sec: number;
+	width: number;
+	height: number;
+	orientation: "vertical" | "horizontal" | "square";
+};
+
+export type IngestResponse = {
+	session_id: string;
+	probe: ProbeInfo;
+};
+
 export type CandidateClip = {
 	clip_id: string;
 	product_id: string | null;
