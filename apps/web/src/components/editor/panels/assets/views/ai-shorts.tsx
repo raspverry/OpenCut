@@ -16,15 +16,15 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useEditor } from "@/hooks/use-editor";
 import { createSidecarClient } from "@/lib/ai-shorts/sidecar-client";
-import { buildAiShortsInsertPlan } from "@/lib/ai-shorts/timeline";
+import { buildAiShortsInsertPlanFromSpec } from "@/lib/ai-shorts/timeline";
 import type {
-	CandidateClip,
 	LanguageCode,
 	SidecarProvider,
 	SourceLanguageCode,
+	TimelineClip,
+	TimelineSpec,
 } from "@/lib/ai-shorts/types";
 import type { MediaAsset } from "@/lib/media/types";
-import { cn } from "@/utils/ui";
 import { toast } from "sonner";
 
 type LoadState = "idle" | "loading" | "analyzing" | "inserting";
@@ -47,7 +47,8 @@ export function AiShortsView() {
 	const [maxClipSec, setMaxClipSec] = useState("30");
 	const [maxClips, setMaxClips] = useState("5");
 	const [includeText, setIncludeText] = useState(true);
-	const [clips, setClips] = useState<CandidateClip[]>([]);
+	const [timelineSpec, setTimelineSpec] = useState<TimelineSpec | null>(null);
+	const [clips, setClips] = useState<TimelineClip[]>([]);
 	const [state, setState] = useState<LoadState>("idle");
 
 	useEffect(() => {
@@ -59,7 +60,19 @@ export function AiShortsView() {
 	const selectedAsset = videoAssets.find((asset) => asset.id === selectedMediaId);
 	const isBusy = state !== "idle";
 
-	const loadCandidates = async () => {
+	const applyTimelineSpec = (spec: TimelineSpec) => {
+		setTimelineSpec(spec);
+		setClips(spec.clips);
+		setLanguage(spec.language);
+	};
+
+	const fetchTimelineSpec = async (normalizedSessionId: string) => {
+		const spec = await sidecar.getTimelineSpec(normalizedSessionId);
+		applyTimelineSpec(spec);
+		return spec;
+	};
+
+	const loadTimelineSpec = async () => {
 		const normalizedSessionId = sessionId.trim();
 		if (!normalizedSessionId) {
 			toast.error("Enter a sidecar session id");
@@ -67,9 +80,8 @@ export function AiShortsView() {
 		}
 		setState("loading");
 		try {
-			const result = await sidecar.getCandidates(normalizedSessionId);
-			setClips(result.clips);
-			toast.success(`Loaded ${result.clips.length} candidate clips`);
+			const spec = await fetchTimelineSpec(normalizedSessionId);
+			toast.success(`Loaded ${spec.clips.length} timeline clips`);
 		} catch (error) {
 			toast.error(errorMessage(error));
 		} finally {
@@ -85,7 +97,7 @@ export function AiShortsView() {
 		}
 		setState("analyzing");
 		try {
-			const result = await sidecar.analyze(normalizedSessionId, {
+			await sidecar.analyze(normalizedSessionId, {
 				provider,
 				source_language: sourceLanguage,
 				language,
@@ -93,10 +105,8 @@ export function AiShortsView() {
 				max_clips: positiveInteger(maxClips, 5),
 				force: true,
 			});
-			setClips(result.candidates.clips);
-			toast.success(
-				`Analyzed ${result.candidates.clips.length} candidate clips`,
-			);
+			const spec = await fetchTimelineSpec(normalizedSessionId);
+			toast.success(`Analyzed ${spec.clips.length} timeline clips`);
 		} catch (error) {
 			toast.error(errorMessage(error));
 		} finally {
@@ -104,17 +114,26 @@ export function AiShortsView() {
 		}
 	};
 
-	const insertClip = (clip: CandidateClip, startTime?: number) => {
+	const insertClip = async (clip: TimelineClip, startTime?: number) => {
 		if (!selectedAsset) {
 			toast.error("Import and select a source video first");
 			return 0;
 		}
+		const normalizedSessionId = sessionId.trim();
+		if (!normalizedSessionId) {
+			toast.error("Enter a sidecar session id");
+			return 0;
+		}
 		const insertStartTime = startTime ?? editor.playback.getCurrentTime();
-		const plan = buildAiShortsInsertPlan({
+		const captionCues = includeText
+			? await sidecar.getCaptionCues(normalizedSessionId, clip.clip_id)
+			: null;
+		const plan = buildAiShortsInsertPlanFromSpec({
 			clip,
 			sourceAsset: selectedAsset,
 			startTime: insertStartTime,
 			includeText,
+			captionCues,
 		});
 		for (const element of plan.elements) {
 			editor.timeline.insertElement({
@@ -128,26 +147,30 @@ export function AiShortsView() {
 		return plan.duration;
 	};
 
-	const insertOne = (clip: CandidateClip) => {
+	const insertOne = async (clip: TimelineClip) => {
 		setState("inserting");
 		try {
-			insertClip(clip);
+			await insertClip(clip);
 			toast.success(`Inserted ${clip.clip_id}`);
+		} catch (error) {
+			toast.error(errorMessage(error));
 		} finally {
 			setState("idle");
 		}
 	};
 
-	const insertAll = () => {
+	const insertAll = async () => {
 		if (clips.length === 0) return;
 		setState("inserting");
 		try {
 			let nextStartTime = editor.playback.getCurrentTime();
 			for (const clip of clips) {
-				const duration = insertClip(clip, nextStartTime);
+				const duration = await insertClip(clip, nextStartTime);
 				nextStartTime += duration;
 			}
 			toast.success(`Inserted ${clips.length} clips`);
+		} catch (error) {
+			toast.error(errorMessage(error));
 		} finally {
 			setState("idle");
 		}
@@ -273,10 +296,10 @@ export function AiShortsView() {
 						<Button
 							variant="outline"
 							size="sm"
-							onClick={loadCandidates}
+							onClick={loadTimelineSpec}
 							disabled={isBusy}
 						>
-							Load
+							Load spec
 						</Button>
 						<Button size="sm" onClick={analyze} disabled={isBusy}>
 							Analyze
@@ -294,13 +317,20 @@ export function AiShortsView() {
 			</div>
 
 			<div className="space-y-2">
+				{timelineSpec && (
+					<p className="text-muted-foreground text-xs">
+						{timelineSpec.source_video.file} · {clips.length} clips ·{" "}
+						{timelineSpec.language.toUpperCase()}
+					</p>
+				)}
 				{clips.length === 0 ? (
 					<div className="text-muted-foreground rounded-md border border-dashed p-4 text-sm">
-						Load or analyze a sidecar session to create editable OpenCut clips.
+						Load a timeline spec or analyze a sidecar session to create editable
+						OpenCut clips.
 					</div>
 				) : (
 					clips.map((clip) => (
-						<CandidateCard
+						<TimelineClipCard
 							key={clip.clip_id}
 							clip={clip}
 							disabled={!selectedAsset || isBusy}
@@ -313,12 +343,12 @@ export function AiShortsView() {
 	);
 }
 
-function CandidateCard({
+function TimelineClipCard({
 	clip,
 	disabled,
 	onInsert,
 }: {
-	clip: CandidateClip;
+	clip: TimelineClip;
 	disabled: boolean;
 	onInsert: () => void;
 }) {
@@ -328,8 +358,8 @@ function CandidateCard({
 				<div className="min-w-0">
 					<div className="text-sm font-medium">{clip.clip_id}</div>
 					<div className="text-muted-foreground text-xs">
-						{formatRange(clip.start_sec, clip.end_sec)} · score{" "}
-						{Math.round(clip.score)}
+						{formatRange(clip.source_range_sec[0], clip.source_range_sec[1])} ·
+						score {Math.round(clip.score)}
 					</div>
 				</div>
 				<Button size="sm" variant="outline" onClick={onInsert} disabled={disabled}>
@@ -342,12 +372,9 @@ function CandidateCard({
 				</p>
 			)}
 			<Textarea
-				value={clip.caption || clip.hook_text}
+				value={clip.hook_text || clip.caption_file}
 				readOnly
-				className={cn(
-					"min-h-14 bg-accent/40 text-xs",
-					!clip.caption && "text-muted-foreground",
-				)}
+				className="min-h-14 bg-accent/40 text-xs"
 			/>
 		</div>
 	);

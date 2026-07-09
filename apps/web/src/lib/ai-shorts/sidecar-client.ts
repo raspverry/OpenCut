@@ -1,9 +1,10 @@
 import type {
 	AnalyzeResponse,
-	Candidates,
+	CaptionCueFile,
 	LanguageCode,
 	SidecarProvider,
 	SourceLanguageCode,
+	TimelineSpec,
 } from "./types";
 
 const DEFAULT_BASE_URL = "http://127.0.0.1:8789";
@@ -55,10 +56,16 @@ export function createSidecarClient(
 				},
 			);
 		},
-		getCandidates(sessionId: string) {
-			return requestJson<Candidates>(
+		getTimelineSpec(sessionId: string) {
+			return requestJson<TimelineSpec>(
 				fetcher,
-				`${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/candidates`,
+				`${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/timeline-spec`,
+			);
+		},
+		getCaptionCues(sessionId: string, clipId: string) {
+			return requestJson<CaptionCueFile>(
+				fetcher,
+				`${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/caption-cues/${encodeURIComponent(clipId)}`,
 			);
 		},
 	};

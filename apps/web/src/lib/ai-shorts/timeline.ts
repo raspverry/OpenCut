@@ -2,7 +2,7 @@ import type { MediaAsset } from "@/lib/media/types";
 import type { CreateTimelineElement, CreateVideoElement } from "@/lib/timeline";
 import { DEFAULTS } from "@/lib/timeline/defaults";
 import { buildTextElement } from "@/lib/timeline/element-utils";
-import type { CandidateClip } from "./types";
+import type { CaptionCueFile, TimelineClip } from "./types";
 
 const MIN_CLIP_SECONDS = 0.1;
 
@@ -12,21 +12,24 @@ export type AiShortsInsertPlan = {
 	sourceRange: [number, number];
 };
 
-export function buildAiShortsInsertPlan({
+export function buildAiShortsInsertPlanFromSpec({
 	clip,
 	sourceAsset,
 	startTime,
 	includeText,
+	captionCues,
 }: {
-	clip: CandidateClip;
+	clip: TimelineClip;
 	sourceAsset: MediaAsset;
 	startTime: number;
 	includeText: boolean;
+	captionCues?: CaptionCueFile | null;
 }): AiShortsInsertPlan {
 	const sourceDuration = getSourceDuration({ clip, sourceAsset });
-	const sourceStart = clamp(clip.start_sec, 0, sourceDuration);
+	const [requestedStart, requestedEnd] = clip.source_range_sec;
+	const sourceStart = clamp(requestedStart, 0, sourceDuration);
 	const sourceEnd = clamp(
-		clip.end_sec,
+		requestedEnd,
 		Math.min(sourceStart + MIN_CLIP_SECONDS, sourceDuration),
 		sourceDuration,
 	);
@@ -82,35 +85,50 @@ export function buildAiShortsInsertPlan({
 			);
 		}
 
-		const captionText = clip.caption.trim();
-		if (captionText) {
-			elements.push(
-				buildTextElement({
-					raw: {
-						name: `${clip.clip_id} caption`,
-						content: captionText,
-						duration,
-						fontSize: 42,
-						fontFamily: "Noto Sans JP",
-						color: "#ffffff",
-						background: {
-							enabled: true,
-							color: "rgba(0, 0, 0, 0.64)",
-							cornerRadius: 16,
-							paddingX: 24,
-							paddingY: 12,
+		if (captionCues) {
+			const fontFamily = captionCues.style.font_family || "Noto Sans CJK JP";
+			for (const cue of captionCues.cues) {
+				const captionText = cue.text.trim();
+				if (!captionText) continue;
+				const cueStart = clamp(cue.start_sec, sourceStart, sourceEnd);
+				const cueEnd = clamp(
+					cue.end_sec,
+					Math.min(cueStart + MIN_CLIP_SECONDS, sourceEnd),
+					sourceEnd,
+				);
+				const cueDuration = cueEnd - cueStart;
+				if (cueDuration <= 0) continue;
+				elements.push(
+					buildTextElement({
+						raw: {
+							name: cue.cue_id,
+							content: captionText,
+							duration: cueDuration,
+							fontSize: 46,
+							fontFamily,
+							color: "#ffffff",
+							background: {
+								enabled: true,
+								color: "rgba(0, 0, 0, 0.68)",
+								cornerRadius: 12,
+								paddingX: 22,
+								paddingY: 10,
+							},
+							textAlign: "center",
+							fontWeight: "bold",
+							lineHeight: 1.16,
+							transform: {
+								...copyDefaultTransform(),
+								position: {
+									x: 0,
+									y: captionSafeAreaY(captionCues.style.safe_area.anchor),
+								},
+							},
 						},
-						textAlign: "center",
-						fontWeight: "bold",
-						lineHeight: 1.16,
-						transform: {
-							...copyDefaultTransform(),
-							position: { x: 0, y: 500 },
-						},
-					},
-					startTime,
-				}),
-			);
+						startTime: startTime + cueStart - sourceStart,
+					}),
+				);
+			}
 		}
 	}
 
@@ -125,13 +143,13 @@ function getSourceDuration({
 	clip,
 	sourceAsset,
 }: {
-	clip: CandidateClip;
+	clip: TimelineClip;
 	sourceAsset: MediaAsset;
 }) {
 	if (Number.isFinite(sourceAsset.duration) && sourceAsset.duration) {
 		return Math.max(MIN_CLIP_SECONDS, sourceAsset.duration);
 	}
-	return Math.max(MIN_CLIP_SECONDS, clip.end_sec, clip.start_sec);
+	return Math.max(MIN_CLIP_SECONDS, clip.source_range_sec[1], clip.source_range_sec[0]);
 }
 
 function copyDefaultTransform() {
@@ -144,4 +162,10 @@ function copyDefaultTransform() {
 function clamp(value: number, min: number, max: number) {
 	if (max < min) return min;
 	return Math.min(Math.max(value, min), max);
+}
+
+function captionSafeAreaY(anchor: CaptionCueFile["style"]["safe_area"]["anchor"]) {
+	if (anchor === "top") return -500;
+	if (anchor === "center") return 0;
+	return 500;
 }
