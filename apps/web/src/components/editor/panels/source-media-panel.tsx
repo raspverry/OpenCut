@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Database, FolderOpen, Plus, RefreshCcw, UploadCloud } from 'lucide-react'
 
 import type { SidecarClient } from '../../../lib/editor/sidecar-client'
 import type { Product } from '../../../lib/editor/types'
@@ -112,108 +113,126 @@ export function SourceMediaPanel({
   }
 
   return (
-    <aside className="h-full min-h-0 overflow-auto bg-[#10141c] p-3">
-      <h2 className="text-xs font-semibold tracking-tight text-slate-200">Source Media</h2>
-      <div className="mt-3 space-y-3">
-        <label className="block space-y-1 text-xs text-slate-400">
-          <span>Session ID</span>
-          <input
-            aria-label="Session ID"
-            className="h-8 w-full rounded-md border border-slate-700 bg-slate-950/80 px-2.5 text-xs text-slate-100 shadow-inner shadow-black/20 outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-            value={sessionIdDraft}
-            onChange={(event) => setSessionIdDraft(event.currentTarget.value)}
-          />
-        </label>
-        <label className="block space-y-1 text-xs text-slate-400">
-          <span>Session slug</span>
-          <input
-            aria-label="Session slug"
-            className="h-8 w-full rounded-md border border-slate-700 bg-slate-950/80 px-2.5 text-xs text-slate-100 shadow-inner shadow-black/20 outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-            value={slug}
-            onChange={(event) => setSlug(event.currentTarget.value)}
-          />
-        </label>
-        <label className="block space-y-1 text-xs text-slate-400">
-          <span>Source path</span>
-          <input
-            aria-label="Source path"
-            className="h-8 w-full rounded-md border border-slate-700 bg-slate-950/80 px-2.5 text-xs text-slate-100 shadow-inner shadow-black/20 outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-            value={sourcePath}
-            onChange={(event) => setSourcePath(event.currentTarget.value)}
-          />
-        </label>
-        <label className="block space-y-1 text-xs text-slate-400">
-          <span>Browser source file</span>
-          <input
-            aria-label="Browser source file"
-            accept="video/mp4,video/quicktime,video/*"
-            className="block w-full text-xs text-slate-400 file:mr-2 file:h-7 file:rounded-md file:border-0 file:bg-slate-900 file:px-2.5 file:text-xs file:font-medium file:text-slate-200 hover:file:bg-slate-800"
-            type="file"
-            onChange={(event) => {
-              onBrowserSourceFileChange?.(event.currentTarget.files?.[0] ?? null)
-            }}
-          />
-        </label>
-        <label className="block space-y-1 text-xs text-slate-400">
-          <span>Product catalog JSON</span>
-          <textarea
-            aria-label="Product catalog JSON"
-            className="min-h-28 w-full resize-y rounded-md border border-slate-700 bg-slate-950/80 px-2.5 py-2 font-mono text-[0.6875rem] leading-4 text-slate-100 shadow-inner shadow-black/20 outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-            spellCheck={false}
-            value={productCatalog}
-            onChange={(event) => setProductCatalog(event.currentTarget.value)}
-          />
-        </label>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="inline-flex h-8 items-center rounded-md border border-slate-700 bg-slate-900 px-2.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
-            onClick={loadSession}
-          >
-            Load Session
-          </button>
-          <button
-            type="button"
-            className="inline-flex h-8 items-center rounded-md border border-slate-700 bg-slate-900 px-2.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
-            onClick={createSession}
-          >
-            Create Session
-          </button>
-          <button
-            type="button"
-            className="inline-flex h-8 items-center rounded-md border border-slate-700 bg-slate-900 px-2.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
-            onClick={ingestSource}
-          >
-            Ingest
-          </button>
-          <button
-            type="button"
-            className="inline-flex h-8 items-center rounded-md border border-slate-700 bg-slate-900 px-2.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
-            onClick={loadProductCatalog}
-          >
-            Load Catalog
-          </button>
-          <button
-            type="button"
-            className="inline-flex h-8 items-center rounded-md border border-slate-700 bg-slate-900 px-2.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800"
-            onClick={saveProductCatalog}
-          >
-            Save Catalog
-          </button>
+    <aside className="flex h-full min-h-0 flex-col bg-[#0f141b]">
+      <div className="flex h-9 shrink-0 items-center justify-between border-b border-[#242b36] px-3">
+        <h2 className="text-xs font-semibold tracking-tight text-slate-200">Media Bin</h2>
+        <span className="text-[0.625rem] font-medium uppercase tracking-[0.1em] text-slate-500">
+          Source
+        </span>
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto">
+        <div className="border-b border-[#242b36] p-2">
+          <div className="flex items-start gap-2 rounded-[4px] border border-blue-400/25 bg-blue-400/10 p-2">
+            <FolderOpen className="mt-0.5 size-3.5 shrink-0 text-blue-300" aria-hidden="true" />
+            <div className="min-w-0">
+              <p className="truncate text-xs font-semibold text-slate-100">
+                {browserSourceFile?.name ?? sourceFile}
+              </p>
+              <p className="mt-0.5 text-[0.625rem] font-medium uppercase tracking-[0.08em] text-slate-500">
+                Primary video
+              </p>
+            </div>
+          </div>
+          <label className="mt-2 block text-xs text-slate-400">
+            <span className="sr-only">Browser source file</span>
+            <input
+              aria-label="Browser source file"
+              accept="video/mp4,video/quicktime,video/*"
+              className="block w-full text-xs text-slate-400 file:mr-2 file:h-7 file:rounded-[4px] file:border-0 file:bg-[#1a202b] file:px-2.5 file:text-xs file:font-medium file:text-slate-200 hover:file:bg-[#222b38]"
+              type="file"
+              onChange={(event) => {
+                onBrowserSourceFileChange?.(event.currentTarget.files?.[0] ?? null)
+              }}
+            />
+          </label>
+        </div>
+
+        <div className="space-y-2 border-b border-[#242b36] p-3">
+          <p className="text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-slate-500">
+            Session
+          </p>
+          <label className="block space-y-1 text-xs text-slate-400">
+            <span>Session ID</span>
+            <input
+              aria-label="Session ID"
+              className={inputClassName}
+              value={sessionIdDraft}
+              onChange={(event) => setSessionIdDraft(event.currentTarget.value)}
+            />
+          </label>
+          <label className="block space-y-1 text-xs text-slate-400">
+            <span>Session slug</span>
+            <input
+              aria-label="Session slug"
+              className={inputClassName}
+              value={slug}
+              onChange={(event) => setSlug(event.currentTarget.value)}
+            />
+          </label>
+          <label className="block space-y-1 text-xs text-slate-400">
+            <span>Source path</span>
+            <input
+              aria-label="Source path"
+              className={inputClassName}
+              value={sourcePath}
+              onChange={(event) => setSourcePath(event.currentTarget.value)}
+            />
+          </label>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button type="button" className={buttonClassName} onClick={loadSession}>
+              <RefreshCcw className="size-3.5" aria-hidden="true" />
+              Load Session
+            </button>
+            <button type="button" className={buttonClassName} onClick={createSession}>
+              <Plus className="size-3.5" aria-hidden="true" />
+              Create Session
+            </button>
+            <button type="button" className={buttonClassName} onClick={ingestSource}>
+              <UploadCloud className="size-3.5" aria-hidden="true" />
+              Ingest
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-2 p-3">
+          <div className="flex items-center justify-between">
+            <p className="text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Products
+            </p>
+            <Database className="size-3.5 text-slate-600" aria-hidden="true" />
+          </div>
+          <label className="block space-y-1 text-xs text-slate-400">
+            <span>Product catalog JSON</span>
+            <textarea
+              aria-label="Product catalog JSON"
+              className="min-h-28 w-full resize-y rounded-[4px] border border-[#2b3442] bg-[#080b10] px-2.5 py-2 font-mono text-[0.6875rem] leading-4 text-slate-100 shadow-inner shadow-black/20 outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+              spellCheck={false}
+              value={productCatalog}
+              onChange={(event) => setProductCatalog(event.currentTarget.value)}
+            />
+          </label>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button type="button" className={buttonClassName} onClick={loadProductCatalog}>
+              Load Catalog
+            </button>
+            <button type="button" className={buttonClassName} onClick={saveProductCatalog}>
+              Save Catalog
+            </button>
+          </div>
         </div>
       </div>
-      <p className="mt-3 break-all rounded-md bg-slate-900 px-2 py-1.5 text-xs text-slate-400">
-        {sourceFile}
-      </p>
-      <p className="mt-2 break-all rounded-md bg-slate-900/70 px-2 py-1.5 text-xs text-slate-500">
-        {browserSourceFile ? browserSourceFile.name : 'No browser source file selected'}
-      </p>
       <p
         role="status"
-        className="mt-2 break-all rounded-md border border-slate-700 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-300"
+        className="shrink-0 break-all border-t border-[#242b36] bg-[#0b0e13] px-3 py-2 text-xs text-slate-400"
       >
         {status}
       </p>
     </aside>
   )
 }
+
+const inputClassName =
+  'h-8 w-full rounded-[4px] border border-[#2b3442] bg-[#080b10] px-2.5 text-xs text-slate-100 shadow-inner shadow-black/20 outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20'
+
+const buttonClassName =
+  'inline-flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[4px] border border-[#2b3442] bg-[#151b24] px-2 text-xs font-medium text-slate-200 transition-colors hover:bg-[#1d2632] focus:outline-none focus:ring-2 focus:ring-blue-400/20'
